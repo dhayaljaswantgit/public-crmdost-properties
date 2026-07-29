@@ -1,10 +1,14 @@
-export const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'https://elegant-oriole-sunny.ngrok-free.app/v1';
-// ngrok free tunnels show an HTML interstitial warning to browser-like requests unless this header is sent.
-const NGROK_HEADERS: Record<string, string> = { 'ngrok-skip-browser-warning': 'true' };
+export const API_BASE = process.env.NEXT_PUBLIC_API_BASE;
+export const API_V1_BASE = `${String(API_BASE || '').replace(/\/+$/, '')}/v1`;
 
 export type Property = {
   id: string; companyId: string; companyName: string; name: string;
   price: string; currency: string; type: string; beds: string; baths: string; area: string;
+  listingType: 'sale' | 'rent';
+  rentFrequency: 'monthly' | 'quarterly' | 'yearly' | '';
+  securityDeposit: string;
+  maintenanceCharges: string;
+  availableFrom: string;
   society: string; sector: string; addr1: string; addr2: string; description: string; images: string[];
   agentName: string; agentPhone: string; allowContact: boolean; allowMeeting: boolean;
 };
@@ -13,6 +17,11 @@ export type Company = { id: string; name: string; initials: string; address: str
 
 // Adapter for the real CRM Dost API shape: { statusCode, message, data: { properties: [...], total } }
 function mapProperty(raw: any): Property {
+  const listingType = String(raw?.listing_type || 'sale').toLowerCase() === 'rent' ? 'rent' : 'sale';
+  const rentFrequencyRaw = String(raw?.rent_frequency || '').toLowerCase();
+  const rentFrequency = ['monthly', 'quarterly', 'yearly'].includes(rentFrequencyRaw)
+    ? (rentFrequencyRaw as 'monthly' | 'quarterly' | 'yearly')
+    : '';
   const agentName = [raw.contactUserFirstName, raw.contactUserLastName].filter(Boolean).join(' ') || raw.contact_name || '';
   const agentPhone = raw.contactUserMobile || raw.contact_phone || '';
   return {
@@ -21,6 +30,11 @@ function mapProperty(raw: any): Property {
     name: raw.name || 'Untitled property',
     price: String(raw.price || 0), currency: raw.currency_code || 'INR',
     type: raw.property_type_name || '', beds: String(raw.beds || ''), baths: String(raw.baths || ''),
+    listingType,
+    rentFrequency,
+    securityDeposit: String(raw.security_deposit || ''),
+    maintenanceCharges: String(raw.maintenance_charges || ''),
+    availableFrom: String(raw.available_from || ''),
     area: String(raw.sqft || ''), society: raw.society_name || '', sector: raw.sector || '',
     addr1: raw.address || '', addr2: raw.address2nd || '', description: raw.description || '',
     images: Array.isArray(raw.images) ? raw.images : [],
@@ -34,10 +48,14 @@ function mapCompany(raw: any): Company {
   return { id: String(raw.id ?? ''), name, initials, address: raw.address || '' };
 }
 
-// Stable pseudo-random Sale/Rent tag derived from id (listing type isn't in the API yet).
-export function listingTag(id: string): { tag: 'For Sale' | 'For Rent'; isRent: boolean } {
+// Prefer server-provided listing type; keep deterministic fallback for legacy records.
+export function listingTag(id: string, listingType?: string): { tag: 'For Sale' | 'For Rent'; isRent: boolean } {
+  const normalized = String(listingType || '').toLowerCase();
+  if (normalized === 'rent') return { tag: 'For Rent', isRent: true };
+  if (normalized === 'sale') return { tag: 'For Sale', isRent: false };
+
   let hash = 0; for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
-  const isRent = hash % 3 === 0;
+  const isRent = hash % 2 === 0;
   return { tag: isRent ? 'For Rent' : 'For Sale', isRent };
 }
 
@@ -55,7 +73,7 @@ export async function fetchPublicProperties(params: { page?: number; perPage?: n
   if (params.perPage) qs.set('per_page', String(params.perPage));
   if (params.search) qs.set('search', params.search);
   if (params.type && params.type !== 'any') qs.set('type', params.type);
-  const res = await fetch(`${API_BASE}/property/public?${qs.toString()}`, { cache: 'no-store', headers: NGROK_HEADERS });
+  const res = await fetch(`${API_V1_BASE}/property/public?${qs.toString()}`, { cache: 'no-store' });
   if (!res.ok) throw new Error('Failed to load properties (' + res.status + ')');
   const json = await res.json();
   const data = json.data || {};
@@ -64,7 +82,7 @@ export async function fetchPublicProperties(params: { page?: number; perPage?: n
 }
 
 export async function fetchPublicCompany(uid: string) {
-  const res = await fetch(`${API_BASE}/property/public/company/${encodeURIComponent(uid)}`, { cache: 'no-store', headers: NGROK_HEADERS });
+  const res = await fetch(`${API_V1_BASE}/property/public/company/${encodeURIComponent(uid)}`, { cache: 'no-store' });
   if (!res.ok) throw new Error('Failed to load company (' + res.status + ')');
   const json = await res.json();
   const data = json.data || {};

@@ -166,7 +166,7 @@ export default function HomePage() {
 	}, [search, type]); // eslint-disable-line
 
 	const filtered = items.filter(p => {
-		const lt = listingTag(p.id);
+		const lt = listingTag(p.id, p.listingType);
 		if (listing !== 'any' && (listing === 'rent') !== lt.isRent) return false;
 		if (companyFilter !== 'any' && p.companyId !== companyFilter) return false;
 		return true;
@@ -226,7 +226,7 @@ export default function HomePage() {
 					<>
 						<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(270px,1fr))', gap: 18, marginBottom: 26 }}>
 							{filtered.map(p => {
-								const lt = listingTag(p.id);
+								const lt = listingTag(p.id, p.listingType);
 								return (
 									<div key={p.id} onClick={() => openDetail(p)} style={{ background: '#fff', border: '1px solid #EAE6E0', borderRadius: 16, overflow: 'hidden', boxShadow: '0 4px 16px rgba(0,0,0,.05)', cursor: 'pointer' }}>
 										<div style={{ position: 'relative', height: 160, background: p.images[0] ? `url(${p.images[0]}) center/cover` : '#F0EDE8' }}>

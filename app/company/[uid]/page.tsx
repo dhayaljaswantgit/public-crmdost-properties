@@ -80,7 +80,7 @@ export default function CompanyPage() {
   const filtered = properties.filter(p => {
     if (search && !`${p.name} ${p.society} ${p.addr1}`.toLowerCase().includes(search.toLowerCase())) return false;
     if (!matchPrice(p.price, priceFilter)) return false;
-    const lt = listingTag(p.id);
+    const lt = listingTag(p.id, p.listingType);
     if (listing !== 'any' && (listing === 'rent') !== lt.isRent) return false;
     return true;
   });
@@ -141,7 +141,7 @@ export default function CompanyPage() {
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(280px,1fr))', gap: 18 }}>
             {filtered.map(p => {
-              const lt = listingTag(p.id);
+              const lt = listingTag(p.id, p.listingType);
               return (
                 <div key={p.id} style={{ background: '#fff', border: '1px solid #EAE6E0', borderRadius: 16, overflow: 'hidden', boxShadow: '0 4px 16px rgba(0,0,0,.05)' }}>
                   <div style={{ position: 'relative', height: 170, background: p.images[0] ? `url(${p.images[0]}) center/cover` : '#F0EDE8' }}>
