@@ -1,0 +1,8 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Inter', system-ui, sans-serif; background: #FAFAF8; }
+a { color: #E8650A; text-decoration: none; }
+a:hover { color: #C44E00; }
+input, select, textarea, button { font-family: inherit; }
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-thumb { background: #E0DCD6; border-radius: 8px; }
+@keyframes pf-fade { from { opacity: 0; } to { opacity: 1; } }
