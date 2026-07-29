@@ -42,6 +42,8 @@ npm run dev
 npm run build
 ```
 
+Docker image builds use `npm ci` for reproducible dependency installation and a `.dockerignore` that excludes local artifacts (`node_modules`, `.next`, `.env`, `.git`).
+
 ## Notes
 
 - The public site does not have access to the authenticated `GET /property/:uid` endpoint, so detail pages are populated from cached data fetched earlier from the public list/company responses.
