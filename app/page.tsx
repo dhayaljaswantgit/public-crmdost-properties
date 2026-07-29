@@ -6,6 +6,22 @@ import { fetchPublicProperties, shortMoney, listingTag, cacheProperty, Property 
 
 const PER_PAGE = 12;
 const HOME_STATE_KEY = 'crmdost:home-state:v1';
+const selectStyle: React.CSSProperties = {
+	border: '1px solid #E8E4DE',
+	borderRadius: 11,
+	padding: '10px 36px 10px 12px',
+	fontSize: 13,
+	color: '#3A3530',
+	backgroundColor: '#fff',
+	cursor: 'pointer',
+	appearance: 'none',
+	WebkitAppearance: 'none',
+	MozAppearance: 'none',
+	backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b6460' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+	backgroundRepeat: 'no-repeat',
+	backgroundPosition: 'right 12px center',
+	backgroundSize: '12px 12px',
+};
 
 type HomeState = {
 	items: Property[];
@@ -184,13 +200,13 @@ export default function HomePage() {
 						<svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="#B8B4AE" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx={11} cy={11} r={7} /><path d="M21 21l-4-4" /></svg>
 						<input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by property, society or company" style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: 13.5, color: '#0A0604' }} />
 					</div>
-					<select value={type} onChange={e => setType(e.target.value)} style={{ border: '1px solid #E8E4DE', borderRadius: 11, padding: '10px 12px', fontSize: 13, color: '#3A3530', background: '#fff', cursor: 'pointer' }}>
+					<select value={type} onChange={e => setType(e.target.value)} style={selectStyle}>
 						<option value="any">Any type</option><option value="Residential">Residential</option><option value="Commercial">Commercial</option>
 					</select>
-					<select value={listing} onChange={e => setListing(e.target.value)} style={{ border: '1px solid #E8E4DE', borderRadius: 11, padding: '10px 12px', fontSize: 13, color: '#3A3530', background: '#fff', cursor: 'pointer' }}>
+					<select value={listing} onChange={e => setListing(e.target.value)} style={selectStyle}>
 						<option value="any">Buy or Rent</option><option value="sale">For Sale</option><option value="rent">For Rent</option>
 					</select>
-					<select value={companyFilter} onChange={e => setCompanyFilter(e.target.value)} style={{ border: '1px solid #E8E4DE', borderRadius: 11, padding: '10px 12px', fontSize: 13, color: '#3A3530', background: '#fff', cursor: 'pointer' }}>
+					<select value={companyFilter} onChange={e => setCompanyFilter(e.target.value)} style={selectStyle}>
 						<option value="any">Any company</option>
 						{companyOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
 					</select>

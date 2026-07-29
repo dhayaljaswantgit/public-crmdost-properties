@@ -4,6 +4,22 @@ import { useRouter, useParams } from 'next/navigation';
 import Header from '../../../components/Header';
 import { fetchPublicCompany, shortMoney, listingTag, cacheProperty, Property, Company } from '../../../lib/api';
 
+const selectStyle: React.CSSProperties = {
+  border: '1px solid #E8E4DE',
+  borderRadius: 11,
+  padding: '10px 36px 10px 12px',
+  fontSize: 13,
+  cursor: 'pointer',
+  appearance: 'none',
+  WebkitAppearance: 'none',
+  MozAppearance: 'none',
+  backgroundColor: '#fff',
+  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b6460' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+  backgroundRepeat: 'no-repeat',
+  backgroundPosition: 'right 12px center',
+  backgroundSize: '12px 12px',
+};
+
 function StatIcons({ p }: { p: Property }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 9, paddingTop: 9, borderTop: '1px solid #F4F1EC', fontSize: 12.5, color: '#5A5048' }}>
@@ -109,10 +125,10 @@ export default function CompanyPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#fff', border: '1px solid #E8E4DE', borderRadius: 11, padding: '10px 14px', minWidth: 220, flex: '2 1 220px' }}>
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by property name or address" style={{ flex: 1, border: 'none', outline: 'none', fontSize: 13.5 }} />
           </div>
-          <select value={priceFilter} onChange={e => setPriceFilter(e.target.value)} style={{ border: '1px solid #E8E4DE', borderRadius: 11, padding: '10px 12px', fontSize: 13, cursor: 'pointer' }}>
+            <select value={priceFilter} onChange={e => setPriceFilter(e.target.value)} style={selectStyle}>
             <option value="any">Any price</option><option value="u50l">Under ₹50 L</option><option value="50l-1cr">₹50L – ₹1 Cr</option><option value="1cr-2cr">₹1 Cr – ₹2 Cr</option><option value="2crplus">₹2 Cr+</option>
           </select>
-          <select value={listing} onChange={e => setListing(e.target.value)} style={{ border: '1px solid #E8E4DE', borderRadius: 11, padding: '10px 12px', fontSize: 13, cursor: 'pointer' }}>
+            <select value={listing} onChange={e => setListing(e.target.value)} style={selectStyle}>
             <option value="any">Buy or Rent</option><option value="sale">For Sale</option><option value="rent">For Rent</option>
           </select>
         </div>
