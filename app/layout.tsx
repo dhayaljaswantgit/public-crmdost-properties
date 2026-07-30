@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import './globals.css';
 
-const rawSiteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://crmdost.com';
+const rawSiteUrl = process.env.NEXT_PUBLIC_SITE_URL_PROPERTIES || 'https://crmdost.com';
 const siteUrl = rawSiteUrl.replace(/\/$/, '');
 
 export const metadata: Metadata = {

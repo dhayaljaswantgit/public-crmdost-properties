@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { fetchPublicProperties } from '../lib/api';
 
-const rawSiteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://crmdost.com';
+const rawSiteUrl = process.env.NEXT_PUBLIC_SITE_URL_PROPERTIES || 'https://crmdost.com';
 const siteUrl = rawSiteUrl.replace(/\/$/, '');
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
