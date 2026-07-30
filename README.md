@@ -26,7 +26,7 @@ The site is wired to the public API endpoints and supports:
 Set the API origin in the environment variable below. The app appends `/v1` internally, so this should be the base origin only.
 
 ```bash
-NEXT_PUBLIC_API_BASE=http://localhost:3004
+NEXT_PUBLIC_API_URL=http://localhost:3004
 ```
 
 Production safety: if no API origin env var is provided, the app falls back to `https://test.apis.crmdost.com` (to avoid accidental same-origin `/v1` calls on the public site domain).
