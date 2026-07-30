@@ -3,8 +3,6 @@ const DEV_API_FALLBACK = 'http://localhost:3004';
 
 const rawApiBase =
   process.env.NEXT_PUBLIC_API_BASE ||
-  process.env.NEXT_PUBLIC_API_ENDPOINT ||
-  process.env.NEXT_PUBLIC_API_URL ||
   (process.env.NODE_ENV === 'production' ? PROD_API_FALLBACK : DEV_API_FALLBACK);
 
 const apiBaseHasProtocol = /^https?:\/\//i.test(String(rawApiBase));
