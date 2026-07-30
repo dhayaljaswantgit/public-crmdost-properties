@@ -29,6 +29,10 @@ Set the API origin in the environment variable below. The app appends `/v1` inte
 NEXT_PUBLIC_API_BASE=http://localhost:3004
 ```
 
+Compatibility: `NEXT_PUBLIC_API_ENDPOINT` and `NEXT_PUBLIC_API_URL` are also supported as fallbacks.
+
+Production safety: if no API origin env var is provided, the app falls back to `https://test.apis.crmdost.com` (to avoid accidental same-origin `/v1` calls on the public site domain).
+
 Example:
 
 ```bash

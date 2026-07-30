@@ -1,5 +1,19 @@
-export const API_BASE = process.env.NEXT_PUBLIC_API_BASE;
-export const API_V1_BASE = `${String(API_BASE || '').replace(/\/+$/, '')}/v1`;
+const PROD_API_FALLBACK = 'https://test.apis.crmdost.com';
+const DEV_API_FALLBACK = 'http://localhost:3004';
+
+const rawApiBase =
+  process.env.NEXT_PUBLIC_API_BASE ||
+  process.env.NEXT_PUBLIC_API_ENDPOINT ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  (process.env.NODE_ENV === 'production' ? PROD_API_FALLBACK : DEV_API_FALLBACK);
+
+const apiBaseHasProtocol = /^https?:\/\//i.test(String(rawApiBase));
+
+export const API_BASE = apiBaseHasProtocol
+  ? String(rawApiBase).replace(/\/+$/, '')
+  : (process.env.NODE_ENV === 'production' ? PROD_API_FALLBACK : DEV_API_FALLBACK);
+
+export const API_V1_BASE = `${API_BASE}/v1`;
 
 export type Property = {
   id: string; companyId: string; companyName: string; name: string;
