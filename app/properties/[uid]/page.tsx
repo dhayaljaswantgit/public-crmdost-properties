@@ -47,6 +47,34 @@ export default function PropertyDetailPage() {
     if (cached) setProperty(cached); else setNotFound(true);
   }, [uid]);
 
+  const imageCount = property?.images?.length || 0;
+
+  useEffect(() => {
+    if (!lightboxOpen || !imageCount) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        setLightboxIdx((idx) => (idx - 1 + imageCount) % imageCount);
+        return;
+      }
+
+      if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        setLightboxIdx((idx) => (idx + 1) % imageCount);
+        return;
+      }
+
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setLightboxOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [imageCount, lightboxOpen]);
+
   if (notFound) return (
     <div style={{ minHeight: '100vh', background: '#FAFAF8' }}>
       <Header />
