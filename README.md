@@ -52,3 +52,13 @@ Docker image builds use `npm ci` for reproducible dependency installation and a 
 - If a property is opened directly without first visiting it from the listings or company page, the app shows a friendly fallback message instead of failing silently.
 - Listing type is derived from the backend `listing_type` field (`sale` or `rent`), with a deterministic fallback for older records that do not yet return it.
 - Requests include the `ngrok-skip-browser-warning` header so browser-like requests work correctly against ngrok tunnels.
+
+## Analytics
+
+PostHog is initialised by `components/AnalyticsProvider.tsx` (mounted in `app/layout.tsx`) when
+`NEXT_PUBLIC_POSTHOG_KEY` is set; without the key it no-ops. Event names are constants in
+`lib/analytics.ts` — never write an event string at a call site. Track property views, agent contact, enquiries and meeting requests. Session recording is disabled — the enquiry forms collect visitor PII.
+
+Use the **same PostHog project key as the CRM app** so the anonymous visitor id carries across
+subdomains via the root-domain cookie and cross-site funnels join up. See
+`docs/integrations/POSTHOG.md` for the platform-wide contract.

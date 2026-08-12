@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '../components/Header';
 import { fetchPublicProperties, shortMoney, listingTag, cacheProperty, Property } from '../lib/api';
+import { track, EVENTS } from '../lib/analytics';
 
 const PER_PAGE = 12;
 const HOME_STATE_KEY = 'crmdost:home-state:v1';
@@ -200,10 +201,10 @@ export default function HomePage() {
 						<svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="#B8B4AE" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx={11} cy={11} r={7} /><path d="M21 21l-4-4" /></svg>
 						<input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by property, society or company" style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: 13.5, color: '#0A0604' }} />
 					</div>
-					<select value={type} onChange={e => setType(e.target.value)} style={selectStyle}>
+					<select value={type} onChange={e => { setType(e.target.value); track(EVENTS.FILTER_APPLIED, { filter: 'type', value: e.target.value }); }} style={selectStyle}>
 						<option value="any">Any type</option><option value="Residential">Residential</option><option value="Commercial">Commercial</option>
 					</select>
-					<select value={listing} onChange={e => setListing(e.target.value)} style={selectStyle}>
+					<select value={listing} onChange={e => { setListing(e.target.value); track(EVENTS.FILTER_APPLIED, { filter: 'listing', value: e.target.value }); }} style={selectStyle}>
 						<option value="any">Buy or Rent</option><option value="sale">For Sale</option><option value="rent">For Rent</option>
 					</select>
 					<select value={companyFilter} onChange={e => setCompanyFilter(e.target.value)} style={selectStyle}>

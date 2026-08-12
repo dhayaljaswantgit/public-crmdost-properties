@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Header from '../../../components/Header';
 import { API_V1_BASE, shortMoney, listingTag, getCachedProperty, Property } from '../../../lib/api';
+import { track, EVENTS } from '../../../lib/analytics';
 
 const toDateInputValue = (date: Date) => {
   const y = date.getFullYear();
@@ -44,7 +45,18 @@ export default function PropertyDetailPage() {
 
   useEffect(() => {
     const cached = getCachedProperty(uid);
-    if (cached) setProperty(cached); else setNotFound(true);
+    if (cached) {
+      setProperty(cached);
+      track(EVENTS.PROPERTY_VIEWED, {
+        property_uid: uid,
+        listing_type: cached.listingType || undefined,
+      });
+    } else {
+      setNotFound(true);
+      // Direct/shared/SEO landings currently fail (detail needs the list cache)
+      // — this measures how much traffic that failure costs.
+      track(EVENTS.DIRECT_LANDING_FAILED, { property_uid: uid });
+    }
   }, [uid]);
 
   const imageCount = property?.images?.length || 0;
@@ -141,6 +153,10 @@ export default function PropertyDetailPage() {
         meetingType: meeting.type,
       });
 
+      track(EVENTS.MEETING_REQUESTED, {
+        property_uid: uid,
+        meeting_type: meeting.type,
+      });
       setMeetingSent(true);
       setMeeting({ name: '', phone: '', email: '', date: '', time: '', type: 'onsite' });
     } catch (e: any) {
@@ -159,12 +175,10 @@ export default function PropertyDetailPage() {
     meetingTime?: string;
     meetingType?: string;
   }) => {
-    const search = new URLSearchParams();
-    Object.entries(payload).forEach(([key, value]) => {
-      if (value != null && String(value).trim() !== '') search.set(key, String(value));
-    });
-
-    const url = `${API_V1_BASE}/property/${encodeURIComponent(uid)}/inquiry?${search.toString()}`;
+    // PII stays in the POST body only. Duplicating it into the query string
+    // would leak names and phone numbers into URLs — server logs, proxies and
+    // analytics all record those.
+    const url = `${API_V1_BASE}/property/${encodeURIComponent(uid)}/inquiry`;
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -191,9 +205,11 @@ export default function PropertyDetailPage() {
         phone: enquiry.phone.trim() || undefined,
         message: enquiry.message.trim() || undefined,
       });
+      track(EVENTS.ENQUIRY_SUBMITTED, { property_uid: uid });
       setSent(true);
       setEnquiry({ name: '', phone: '', message: '' });
     } catch (e: any) {
+      track(EVENTS.ENQUIRY_FAILED, { property_uid: uid });
       setEnquiryError(e?.message || 'Unable to send enquiry right now.');
     } finally {
       setEnquirySubmitting(false);
@@ -266,8 +282,8 @@ export default function PropertyDetailPage() {
                   <div><div style={{ fontSize: 14, fontWeight: 700 }}>{property.agentName || '—'}</div><div style={{ fontSize: 12, color: '#8A8480' }}>{property.agentPhone}</div></div>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <a href={property.agentPhone ? `tel:+${property.agentPhone.replace(/\D/g, '')}` : '#'} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, background: '#E8650A', color: '#fff', borderRadius: 11, padding: 11, fontSize: 13.5, fontWeight: 700 }}>Call</a>
-                  <a href={property.agentPhone ? `https://wa.me/${property.agentPhone.replace(/\D/g, '')}` : '#'} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, background: '#fff', color: '#3B6D11', border: '1px solid #C0DD97', borderRadius: 11, padding: 11, fontSize: 13.5, fontWeight: 700 }}>WhatsApp</a>
+                  <a href={property.agentPhone ? `tel:+${property.agentPhone.replace(/\D/g, '')}` : '#'} onClick={() => track(EVENTS.AGENT_CONTACTED, { property_uid: uid, channel: 'call' })} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, background: '#E8650A', color: '#fff', borderRadius: 11, padding: 11, fontSize: 13.5, fontWeight: 700 }}>Call</a>
+                  <a href={property.agentPhone ? `https://wa.me/${property.agentPhone.replace(/\D/g, '')}` : '#'} onClick={() => track(EVENTS.AGENT_CONTACTED, { property_uid: uid, channel: 'whatsapp' })} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, background: '#fff', color: '#3B6D11', border: '1px solid #C0DD97', borderRadius: 11, padding: 11, fontSize: 13.5, fontWeight: 700 }}>WhatsApp</a>
                 </div>
               </div>
             )}
