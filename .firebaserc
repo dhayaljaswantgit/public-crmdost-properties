@@ -1,0 +1,12 @@
+{
+  "projects": {
+    "default": "crm-dost-staging"
+  },
+  "targets": {
+    "crm-dost-staging": {
+      "hosting": {
+        "crm-dost-properties": ["crm-dost-properties"]
+      }
+    }
+  }
+}

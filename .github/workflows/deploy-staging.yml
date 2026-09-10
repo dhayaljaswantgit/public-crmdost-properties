@@ -1,0 +1,67 @@
+# Staging: every push to v2 publishes the public property site to Firebase
+# Hosting (site "crm-dost-properties") → https://test.properties.crmdost.com
+#
+# The site is server-rendered (link-preview metadata, share images, slug
+# redirects), so it deploys through Firebase's Next.js integration: static
+# files on Hosting, the server part on Cloud Functions in asia-south1
+# (firebase.json → frameworksBackend). That needs the Blaze plan.
+#
+# Repository settings needed (Settings → Secrets and variables → Actions):
+#   Secret   FIREBASE_SERVICE_ACCOUNT_STAGING — service-account JSON for crm-dost-staging
+#            (roles: Firebase Admin, Cloud Functions Admin, Cloud Run Admin,
+#             Artifact Registry Administrator, Service Account User)
+#   Variables (optional) POSTHOG_KEY, POSTHOG_HOST; URLs default to staging.
+
+name: Deploy staging
+
+on:
+  push:
+    branches: [v2]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-staging-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Publish properties site
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      # NEXT_PUBLIC_* are baked in at build time; Firebase runs `next build`
+      # during deploy and reads this file.
+      - name: Write .env.production
+        run: |
+          cat > .env.production <<EOF
+          NEXT_PUBLIC_API_URL=${{ vars.API_URL_STAGING || 'https://test.apis.crmdost.com' }}
+          NEXT_PUBLIC_SITE_URL_PROPERTIES=${{ vars.PROPERTIES_URL_STAGING || 'https://test.properties.crmdost.com' }}
+          NEXT_PUBLIC_POSTHOG_KEY=${{ vars.POSTHOG_KEY }}
+          NEXT_PUBLIC_POSTHOG_HOST=${{ vars.POSTHOG_HOST || 'https://us.i.posthog.com' }}
+          EOF
+
+      # Linux install, so sharp gets the linux-x64 build the function runs on.
+      - run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit -p .
+
+      - name: Deploy to Firebase Hosting
+        env:
+          SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_STAGING }}
+          FIREBASE_CLI_EXPERIMENTS: webframeworks
+        run: |
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-sa.json"
+          printf '%s' "$SERVICE_ACCOUNT" > "$GOOGLE_APPLICATION_CREDENTIALS"
+          npx --yes firebase-tools@13 deploy \
+            --only hosting:crm-dost-properties \
+            --project crm-dost-staging \
+            --non-interactive \
+            --message "${GITHUB_SHA::7} · run ${GITHUB_RUN_NUMBER}"

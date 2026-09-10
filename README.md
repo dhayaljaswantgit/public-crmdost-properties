@@ -55,6 +55,10 @@ npm run dev
 npm run build
 ```
 
+### Staging deploy (automatic)
+
+Every push to `v2` runs `.github/workflows/deploy-staging.yml`, which publishes to Firebase Hosting site `crm-dost-properties` (project `crm-dost-staging`) → https://test.properties.crmdost.com. The site is server-rendered, so it uses Firebase's Next.js integration (`FIREBASE_CLI_EXPERIMENTS=webframeworks`): static files on Hosting, the server part on Cloud Functions in `asia-south1` (`firebase.json` → `frameworksBackend`). This requires the Blaze plan. `NEXT_PUBLIC_*` values are written to `.env.production` in the workflow.
+
 Docker image builds use `npm ci` for reproducible dependency installation and a `.dockerignore` that excludes local artifacts (`node_modules`, `.next`, `.env`, `.git`).
 
 ## Notes

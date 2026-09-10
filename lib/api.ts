@@ -34,7 +34,9 @@ export function toBrand(name: unknown, logo: unknown, color: unknown, displayMod
   return {
     name: String(name || ''),
     logo: hasLogo ? url : '',
-    color: /^#[0-9a-f]{6}$/i.test(hex) ? hex : DEFAULT_BRAND_COLOR,
+    // "none" is the CRM's "no colour" (transparent) swatch: a neutral dark,
+    // not the orange a never-set colour falls back to.
+    color: hex === 'none' ? '#3A3530' : /^#[0-9a-f]{6}$/i.test(hex) ? hex : DEFAULT_BRAND_COLOR,
     // "Logo only" needs a logo to show; without one the name must stay.
     showName: !(hasLogo && displayMode === 'logo'),
   };
