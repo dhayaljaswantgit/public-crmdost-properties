@@ -9,6 +9,13 @@ ARG NEXT_PUBLIC_SITE_URL_PROPERTIES=https://properties.crmdost.com
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_SITE_URL_PROPERTIES=$NEXT_PUBLIC_SITE_URL_PROPERTIES
 
+# Analytics was read by the app but never declared here, so Docker builds
+# always shipped with PostHog off.
+ARG NEXT_PUBLIC_POSTHOG_KEY
+ARG NEXT_PUBLIC_POSTHOG_HOST
+ENV NEXT_PUBLIC_POSTHOG_KEY=$NEXT_PUBLIC_POSTHOG_KEY \
+    NEXT_PUBLIC_POSTHOG_HOST=$NEXT_PUBLIC_POSTHOG_HOST
+
 COPY package*.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci --include=dev
 
