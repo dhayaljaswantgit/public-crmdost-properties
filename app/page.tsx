@@ -3,6 +3,7 @@ import { formatArea } from '@/lib/area';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '../components/Header';
+import Footer from '../components/Footer';
 import { fetchPublicProperties, shortMoney, listingTag, cacheProperty, Property } from '../lib/api';
 import { track, EVENTS } from '../lib/analytics';
 
@@ -102,7 +103,15 @@ function StatIcons({ p }: { p: Property }) {
 }
 
 export default function HomePage() {
-	const cachedHomeState = memoryHomeState || readCachedHomeState();
+	/*
+	  The first render must match the server's HTML, and the server has no
+	  sessionStorage. So only the in-memory copy (set by a previous visit in this
+	  tab, i.e. a client navigation that does not hydrate) is used here; the
+	  sessionStorage copy (a hard refresh) is restored in an effect below.
+	  Reading sessionStorage during render caused "Text content did not match"
+	  and threw away the server HTML.
+	*/
+	const cachedHomeState = memoryHomeState;
 	const router = useRouter();
 	const [items, setItems] = useState<Property[]>(cachedHomeState?.items || []);
 	const [total, setTotal] = useState(cachedHomeState?.total || 0);
@@ -113,8 +122,29 @@ export default function HomePage() {
 	const [companyFilter, setCompanyFilter] = useState(cachedHomeState?.companyFilter || 'any');
 	const [loading, setLoading] = useState((cachedHomeState?.items?.length || 0) === 0);
 	const [error, setError] = useState('');
-	const hasMountedRef = useRef(false);
+	const [restored, setRestored] = useState(!!cachedHomeState);
+	/** The search/type last loaded, so restoring them does not reload or reset the page. */
+	const lastQueryRef = useRef({ search, type });
 	const itemsCountRef = useRef((cachedHomeState?.items?.length || 0));
+
+	useEffect(() => {
+		if (restored) return;
+		const cached = readCachedHomeState();
+		if (cached) {
+			memoryHomeState = cached;
+			itemsCountRef.current = cached.items.length;
+			lastQueryRef.current = { search: cached.search || '', type: cached.type || 'any' };
+			setItems(cached.items);
+			setTotal(cached.total || 0);
+			setPage(cached.page || 1);
+			setSearch(cached.search || '');
+			setType(cached.type || 'any');
+			setListing(cached.listing || 'any');
+			setCompanyFilter(cached.companyFilter || 'any');
+			setLoading(cached.items.length === 0);
+		}
+		setRestored(true);
+	}, []); // eslint-disable-line
 
 	useEffect(() => {
 		itemsCountRef.current = items.length;
@@ -125,6 +155,7 @@ export default function HomePage() {
 		if (shouldShowLoading) setLoading(true);
 		setError('');
 
+		lastQueryRef.current = { search: s, type: t };
 		try {
 			const { items, total } = await fetchHomeWithDedupe(p, s, t);
 			const nextHomeState: HomeState = {
@@ -149,12 +180,13 @@ export default function HomePage() {
 		}
 	}, [listing, companyFilter]);
 
-	useEffect(() => { load(page, search, type); }, [page]); // eslint-disable-line
 	useEffect(() => {
-		if (!hasMountedRef.current) {
-			hasMountedRef.current = true;
-			return;
-		}
+		if (restored) load(page, search, type);
+	}, [page, restored]); // eslint-disable-line
+	useEffect(() => {
+		if (!restored) return;
+		const last = lastQueryRef.current;
+		if (last.search === search && last.type === type) return;
 
 		const t = setTimeout(() => {
 			if (page === 1) {
@@ -188,7 +220,7 @@ export default function HomePage() {
 	const openDetail = (p: Property) => { cacheProperty(p); router.push(`/properties/${p.id}`); };
 
 	return (
-		<div style={{ minHeight: '100vh', background: '#FAFAF8' }}>
+		<div className="cd-page">
 			<Header />
 			<div style={{ maxWidth: 1180, margin: '0 auto', padding: '32px 28px 70px', animation: 'pf-fade .2s ease' }}>
 				<div style={{ marginBottom: 22 }}>
@@ -258,7 +290,7 @@ export default function HomePage() {
 					</>
 				)}
 			</div>
-			<div style={{ textAlign: 'center', padding: 24, color: '#B8B4AE', fontSize: 12, borderTop: '1px solid #F0EDE8' }}>Powered by CRM Dost</div>
+			<Footer />
 		</div>
 	);
 }

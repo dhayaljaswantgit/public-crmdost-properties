@@ -3,6 +3,7 @@ import { formatArea } from '@/lib/area';
 import { useEffect, useState, type ComponentType, type CSSProperties, type ReactNode } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Header from '../../../components/Header';
+import Footer from '../../../components/Footer';
 import { API_V1_BASE, shortMoney, listingTag, getCachedProperty, cacheProperty, fetchPublicProperty, forgetCachedProperty, toBrand, Property } from '../../../lib/api';
 import { track, EVENTS } from '../../../lib/analytics';
 import {
@@ -25,6 +26,7 @@ import {
   RulerIcon,
   RupeeIcon,
   SendIcon,
+  UserRoundIcon,
   ShieldCheckIcon,
   VideoIcon,
   WrenchIcon,
@@ -168,7 +170,7 @@ export default function PropertyDetailPage() {
   }, [imageCount, lightboxOpen]);
 
   if (notFound) return (
-    <div style={{ minHeight: '100vh', background: '#FAFAF8' }}>
+    <div className="cd-page">
       <Header />
       <div style={{ textAlign: 'center', padding: '80px 20px', color: '#5A5048' }}>
         <span style={{ width: 56, height: 56, borderRadius: 16, background: '#FFF1E6', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
@@ -177,9 +179,10 @@ export default function PropertyDetailPage() {
         <div style={{ fontSize: 15, fontWeight: 600 }}>This property isn't available — it may have been sold, rented or unpublished.</div>
         <div style={{ marginTop: 12 }}><a href="/properties" style={{ color: BRAND, fontWeight: 700 }}>Browse all properties</a></div>
       </div>
+      <Footer />
     </div>
   );
-  if (!property) return (<div style={{ minHeight: '100vh', background: '#FAFAF8' }}><Header /><div style={{ textAlign: 'center', padding: '80px 0', color: '#8A8480' }}>Loading property…</div></div>);
+  if (!property) return (<div className="cd-page"><Header /><div style={{ textAlign: 'center', padding: '80px 0', color: '#8A8480' }}>Loading property…</div><Footer /></div>);
 
   const images = property.images.length ? property.images : [''];
   const hero = images[0];
@@ -300,7 +303,7 @@ export default function PropertyDetailPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#FAFAF8' }}>
+    <div className="cd-page">
       <Header brand={property.brand ?? toBrand(property.companyName, '', '', '')} companyHref={`/company/${property.companyId}`} />
       <div style={{ maxWidth: 1140, margin: '0 auto', padding: '26px 28px 70px' }}>
         <button onClick={() => router.back()} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#F5F2EE', border: 'none', borderRadius: 9, padding: '8px 14px', fontSize: 12.5, fontWeight: 700, color: '#5A5048', cursor: 'pointer', marginBottom: 18 }}><ArrowLeftIcon size={15} /> Back</button>
@@ -361,10 +364,10 @@ export default function PropertyDetailPage() {
           <div style={{ flex: '1 1 280px', minWidth: 270, display: 'flex', flexDirection: 'column', gap: 16 }}>
             {property.allowContact && (
               <div style={{ background: '#fff', border: '1px solid #EAE6E0', borderRadius: 16, padding: 18 }}>
-                <div style={{ marginBottom: 13 }}><CardTitle icon={PhoneIcon}>Agent Details</CardTitle></div>
+                <div style={{ marginBottom: 13 }}><CardTitle icon={UserRoundIcon}>Agent Details</CardTitle></div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 14 }}>
                   <div style={{ width: 42, height: 42, borderRadius: '50%', background: '#E8650A', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700 }}>{(property.agentName.match(/\b\w/g) || ['?']).slice(0, 2).join('').toUpperCase()}</div>
-                  <div><div style={{ fontSize: 14, fontWeight: 700 }}>{property.agentName || '—'}</div>{property.agentPhone ? <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#8A8480', marginTop: 2 }}><PhoneIcon size={12} />{property.agentPhone}</div> : null}</div>
+                  <div><div style={{ fontSize: 14, fontWeight: 700 }}>{property.agentName || '—'}</div>{property.agentPhone ? <div style={{ fontSize: 12.5, color: '#8A8480', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>{property.agentPhone}</div> : null}</div>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <a target='_blank' href={property.agentPhone ? `tel:+${property.agentPhone.replace(/\D/g, '')}` : '#'} onClick={() => track(EVENTS.AGENT_CONTACTED, { property_uid: uid, channel: 'call' })} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, background: '#E8650A', color: '#fff', borderRadius: 11, padding: 11, fontSize: 13.5, fontWeight: 700 }}><PhoneIcon size={15} /> Call</a>
@@ -433,7 +436,7 @@ export default function PropertyDetailPage() {
           </div>
         </div>
       </div>
-      <div style={{ textAlign: 'center', padding: 24, color: '#B8B4AE', fontSize: 12, borderTop: '1px solid #F0EDE8' }}>Powered by CRM Dost</div>
+      <Footer />
 
       {lightboxOpen && (
         <div onClick={() => setLightboxOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(10,6,4,.92)', zIndex: 600, display: 'flex', flexDirection: 'column' }}>

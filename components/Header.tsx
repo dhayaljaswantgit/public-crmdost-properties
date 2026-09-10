@@ -1,6 +1,10 @@
 'use client';
 import Link from 'next/link';
+import { Orbitron } from 'next/font/google';
 import type { CompanyBrand } from '../lib/api';
+
+/** Wide, squared caps to match the logo's ".DOST"; self-hosted by next/font. */
+const wordmarkFont = Orbitron({ subsets: ['latin'], weight: ['800'], display: 'swap' });
 
 /**
  * The company's own mark on the right: its logo, and its name unless the
@@ -28,16 +32,49 @@ function CompanyMark({ brand, href }: { brand: CompanyBrand; href?: string }) {
   return href ? <Link href={href} aria-label={brand.name} style={style}>{content}</Link> : <div style={style}>{content}</div>;
 }
 
+/**
+ * "Properties" wordmark, built in the CRM Dost logo's own language: a big
+ * sharp-edged initial in the "CRM" orange gradient (#FAAF40 → #F05A28, left to
+ * right, like each CRM letter), then wide squared capitals in the ".DOST" blue
+ * (#00AEEF). The P is drawn — its outline is a house with a pitched roof, its
+ * counter is a house-shaped window, and the chimney carries the DOST blue.
+ */
+function PropertiesMark() {
+  return (
+    <span aria-hidden="true" style={{ display: 'flex', alignItems: 'flex-end', gap: 3 }}>
+      <svg width="22" height="26" viewBox="0 0 28 33" style={{ display: 'block', flexShrink: 0, margin:'-7px 0 0 -7px' }}>
+        <defs>
+          <linearGradient id="cd-prop-grad" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="28" y2="0">
+            <stop offset="0" stopColor="#FAAF40" />
+            <stop offset="1" stopColor="#F05A28" />
+          </linearGradient>
+        </defs>
+        <rect x="19.5" y="0.5" width="4" height="7" fill="#00AEEF" />
+        <path
+          fill="url(#cd-prop-grad)"
+          fillRule="evenodd"
+          d="M0 33V9.2L14 0l14 9.2V23.5H7.2V33Z M7.2 12.6 14 8.1l6.8 4.5V16.8H7.2Z"
+        />
+      </svg>
+      <span
+        className={wordmarkFont.className}
+        style={{ fontSize: 13.5, fontWeight: 800, letterSpacing: '0.06em', lineHeight: 1, color: '#00AEEF', paddingBottom: 1 }}
+      >
+        ROPERTIES
+      </span>
+    </span>
+  );
+}
+
 export default function Header({ brand, companyHref }: { brand?: CompanyBrand; companyHref?: string }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, height: 64, padding: '0 28px', background: '#fff', borderBottom: '1px solid #F0EDE8', position: 'sticky', top: 0, zIndex: 100 }}>
-      <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0 }}>
-        <img src="/crm-dost-logo.svg" alt="CRM Dost" style={{ height: 35 }} />
-        <span style={{ fontSize: 14, fontWeight: 500, color: '#B8B4AE' }}>Properties</span>
+      <Link href="/" aria-label="CRM Dost Properties" style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+        <img src="/crm-dost-logo.svg" alt="" style={{ height: 35 }} />
+        <PropertiesMark />
       </Link>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
         {brand?.name ? <CompanyMark brand={brand} href={companyHref} /> : null}
-        {brand?.name ? null : <div style={{ fontSize: 12, color: '#B8B4AE' }}>Powered by CRM Dost</div>}
       </div>
     </div>
   );

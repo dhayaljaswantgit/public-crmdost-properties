@@ -39,6 +39,11 @@ export function initAnalytics(): void {
     secure_cookie: process.env.NODE_ENV === "production",
     // Never record visitor keystrokes on this site — the forms hold PII.
     disable_session_recording: true,
+    // Web vitals only from real builds. In `next dev`, Fast Refresh resets the
+    // browser's performance entries under PostHog's web-vitals add-on, which
+    // then throws "Cannot read properties of undefined (reading 'startTime')"
+    // on every idle tick — and dev timings are meaningless on the dashboard.
+    ...(process.env.NODE_ENV === "production" ? {} : { capture_performance: false }),
   });
 }
 

@@ -6,3 +6,17 @@ input, select, textarea, button { font-family: inherit; }
 ::-webkit-scrollbar { width: 8px; }
 ::-webkit-scrollbar-thumb { background: #E0DCD6; border-radius: 8px; }
 @keyframes pf-fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* Header on phones: the Properties lockup is wide, so tighten the gutters and
+   let the company mark show its logo (or initials) without the name. */
+@media (max-width: 520px) {
+  .cd-header { padding: 0 16px !important; }
+  .cd-brand-name { display: none; }
+}
+
+/* Every page: at least one screen tall, as a column, so <Footer /> (margin-top:
+   auto) always lands at the bottom of the screen on short pages. */
+.cd-page { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; background: #FAFAF8; }
+/* In a column flexbox, a child with max-width + auto margins shrinks to its
+   content; keep page sections full-width (their max-width still centres them). */
+.cd-page > * { width: 100%; box-sizing: border-box; }

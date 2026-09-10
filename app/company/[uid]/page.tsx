@@ -3,6 +3,7 @@ import { formatArea } from '@/lib/area';
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Header from '../../../components/Header';
+import Footer from '../../../components/Footer';
 import { fetchPublicCompany, shortMoney, listingTag, cacheProperty, Property, Company } from '../../../lib/api';
 
 const selectStyle: React.CSSProperties = {
@@ -91,11 +92,11 @@ export default function CompanyPage() {
 
   const openDetail = (p: Property) => { cacheProperty(p); router.push(`/properties/${p.id}`); };
 
-  if (loading) return (<div style={{ minHeight: '100vh', background: '#FAFAF8' }}><Header /><div style={{ textAlign: 'center', padding: '80px 0', color: '#8A8480' }}>Loading company…</div></div>);
-  if (error || !company) return (<div style={{ minHeight: '100vh', background: '#FAFAF8' }}><Header /><div style={{ textAlign: 'center', padding: '80px 20px', color: '#A32D2D' }}>{error || 'Company not found'}</div></div>);
+  if (loading) return (<div className="cd-page"><Header /><div style={{ textAlign: 'center', padding: '80px 0', color: '#8A8480' }}>Loading company…</div><Footer /></div>);
+  if (error || !company) return (<div className="cd-page"><Header /><div style={{ textAlign: 'center', padding: '80px 20px', color: '#A32D2D' }}>{error || 'Company not found'}</div><Footer /></div>);
 
   return (
-    <div style={{ minHeight: '100vh', background: '#FAFAF8' }}>
+    <div className="cd-page">
       <Header brand={company.brand} />
       <div style={{ position: 'relative', overflow: 'hidden', height: 230 }}>
         {bannerImgs.length > 0 ? bannerImgs.map((url, i) => (
@@ -166,7 +167,7 @@ export default function CompanyPage() {
           </div>
         )}
       </div>
-      <div style={{ textAlign: 'center', padding: 24, color: '#B8B4AE', fontSize: 12, borderTop: '1px solid #F0EDE8' }}>Powered by CRM Dost</div>
+      <Footer />
     </div>
   );
 }
