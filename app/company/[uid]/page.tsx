@@ -96,17 +96,21 @@ export default function CompanyPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#FAFAF8' }}>
-      <Header companyName={company.name} companyHref={`/company/${uid}`} />
+      <Header brand={company.brand} />
       <div style={{ position: 'relative', overflow: 'hidden', height: 230 }}>
         {bannerImgs.length > 0 ? bannerImgs.map((url, i) => (
           <div key={i} style={{ position: 'absolute', inset: 0, background: `url(${url}) center/cover`, opacity: i === bannerIdx ? 1 : 0, transition: 'opacity .8s ease' }} />
-        )) : <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg,#E8650A,#C44E00)' }} />}
+        )) : <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(135deg,${company.brand.color},${company.brand.color}B3)` }} />}
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(0deg,rgba(10,6,4,.65) 0%,rgba(10,6,4,.15) 60%,rgba(10,6,4,0) 100%)' }} />
       </div>
 
       <div style={{ maxWidth: 1180, margin: '-46px auto 0', padding: '0 28px 70px', position: 'relative' }}>
         <div style={{ background: '#fff', border: '1px solid #EAE6E0', borderRadius: 18, padding: '22px 24px', boxShadow: '0 8px 24px rgba(0,0,0,.08)', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-          <div style={{ width: 58, height: 58, borderRadius: 14, background: '#E8650A', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 800, flexShrink: 0 }}>{company.initials}</div>
+          {company.brand.logo ? (
+            <img src={company.brand.logo} alt={`${company.name} logo`} style={{ display: 'block', height: 58, width: 'auto', maxWidth: 160, flexShrink: 0 }} />
+          ) : (
+            <div style={{ width: 58, height: 58, borderRadius: 14, background: company.brand.color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 800, flexShrink: 0 }}>{company.initials}</div>
+          )}
           <div style={{ flex: 1, minWidth: 200 }}>
             <div style={{ fontSize: 20, fontWeight: 800, color: '#0A0604' }}>{company.name}</div>
             <div style={{ fontSize: 12.5, color: '#8A8480', marginTop: 3 }}>{company.address || '—'}</div>

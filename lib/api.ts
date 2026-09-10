@@ -13,8 +13,37 @@ export const API_BASE = apiBaseHasProtocol
 
 export const API_V1_BASE = `${API_BASE}/v1`;
 
+/**
+ * How a company chose to present itself (CRM → Settings → Workspace →
+ * Branding). Values are sanitised here: the colour must be a #rrggbb hex and
+ * the logo an https URL, so nothing else from the API reaches a style or src.
+ */
+export type CompanyBrand = {
+  name: string;
+  logo: string;
+  color: string;
+  showName: boolean;
+};
+
+export const DEFAULT_BRAND_COLOR = '#E8650A';
+
+export function toBrand(name: unknown, logo: unknown, color: unknown, displayMode: unknown): CompanyBrand {
+  const hex = String(color || '');
+  const url = String(logo || '');
+  const hasLogo = /^https:\/\//i.test(url);
+  return {
+    name: String(name || ''),
+    logo: hasLogo ? url : '',
+    color: /^#[0-9a-f]{6}$/i.test(hex) ? hex : DEFAULT_BRAND_COLOR,
+    // "Logo only" needs a logo to show; without one the name must stay.
+    showName: !(hasLogo && displayMode === 'logo'),
+  };
+}
+
 export type Property = {
   id: string; companyId: string; companyName: string; name: string;
+  /** Optional: copies cached before branding existed do not carry it. */
+  brand?: CompanyBrand;
   price: string; currency: string; type: string; beds: string; baths: string; area: string; areaUnit: string;
   listingType: 'sale' | 'rent';
   rentFrequency: 'monthly' | 'quarterly' | 'yearly' | '';
@@ -25,7 +54,7 @@ export type Property = {
   agentName: string; agentPhone: string; allowContact: boolean; allowMeeting: boolean;
 };
 
-export type Company = { id: string; name: string; initials: string; address: string };
+export type Company = { id: string; name: string; initials: string; address: string; brand: CompanyBrand };
 
 // Adapter for the real CRM Dost API shape: { statusCode, message, data: { properties: [...], total } }
 function mapProperty(raw: any): Property {
@@ -39,6 +68,7 @@ function mapProperty(raw: any): Property {
   return {
     id: raw.uid || String(raw.id || ''), companyId: String(raw.companyId ?? raw.companyUid ?? ''),
     companyName: raw.companyName || '',
+    brand: toBrand(raw.companyName, raw.companyLogo, raw.companyBrandColor, raw.companyDisplayMode),
     name: raw.name || 'Untitled property',
     price: String(raw.price || 0), currency: raw.currency_code || 'INR',
     type: raw.property_type_name || '', beds: String(raw.beds || ''), baths: String(raw.baths || ''),
@@ -57,7 +87,10 @@ function mapProperty(raw: any): Property {
 function mapCompany(raw: any): Company {
   const name = raw.name || 'Company';
   const initials = (name.match(/\b\w/g) || ['C']).slice(0, 2).join('').toUpperCase();
-  return { id: String(raw.id ?? ''), name, initials, address: raw.address || '' };
+  return {
+    id: String(raw.id ?? ''), name, initials, address: raw.address || '',
+    brand: toBrand(name, raw.logo, raw.brandColor, raw.displayMode),
+  };
 }
 
 // Prefer server-provided listing type; keep deterministic fallback for legacy records.

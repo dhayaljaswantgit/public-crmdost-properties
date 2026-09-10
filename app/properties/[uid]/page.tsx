@@ -1,10 +1,64 @@
 'use client';
 import { formatArea } from '@/lib/area';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ComponentType, type CSSProperties, type ReactNode } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Header from '../../../components/Header';
-import { API_V1_BASE, shortMoney, listingTag, getCachedProperty, cacheProperty, fetchPublicProperty, forgetCachedProperty, Property } from '../../../lib/api';
+import { API_V1_BASE, shortMoney, listingTag, getCachedProperty, cacheProperty, fetchPublicProperty, forgetCachedProperty, toBrand, Property } from '../../../lib/api';
 import { track, EVENTS } from '../../../lib/analytics';
+import {
+  ArrowLeftIcon,
+  BathIcon,
+  BedIcon,
+  CalendarCheckIcon,
+  CalendarIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  CircleAlertIcon,
+  CircleCheckIcon,
+  FileTextIcon,
+  HomeSearchIcon,
+  ImagesIcon,
+  MapPinIcon,
+  MessageCircleIcon,
+  PhoneIcon,
+  RepeatIcon,
+  RulerIcon,
+  RupeeIcon,
+  SendIcon,
+  ShieldCheckIcon,
+  VideoIcon,
+  WrenchIcon,
+  XIcon,
+} from '../../../components/icons';
+
+type IconType = ComponentType<{ size?: number; color?: string; style?: CSSProperties }>;
+
+const BRAND = '#E8650A';
+
+/** A labelled fact with its icon in a tinted bubble. */
+function StatTile({ icon: Icon, label, value, accent = false }: { icon: IconType; label: string; value: ReactNode; accent?: boolean }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 11, background: '#fff', border: '1px solid #EAE6E0', borderRadius: 14, padding: '12px 13px', minWidth: 0 }}>
+      <span style={{ width: 36, height: 36, borderRadius: 10, background: '#FFF1E6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <Icon size={18} color={BRAND} />
+      </span>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.04em', color: '#A8A29B', textTransform: 'uppercase' }}>{label}</div>
+        <div style={{ fontSize: 15, fontWeight: 800, color: accent ? BRAND : '#1A120C', marginTop: 2, overflowWrap: 'anywhere' }}>{value}</div>
+      </div>
+    </div>
+  );
+}
+
+/** Card / section heading with a leading icon. */
+function CardTitle({ icon: Icon, children, size = 14 }: { icon: IconType; children: ReactNode; size?: number }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: size, fontWeight: 800, color: '#1A120C' }}>
+      <Icon size={size + 3} color={BRAND} />
+      {children}
+    </div>
+  );
+}
 
 const toDateInputValue = (date: Date) => {
   const y = date.getFullYear();
@@ -116,9 +170,12 @@ export default function PropertyDetailPage() {
   if (notFound) return (
     <div style={{ minHeight: '100vh', background: '#FAFAF8' }}>
       <Header />
-      <div style={{ textAlign: 'center', padding: '80px 20px', color: '#A32D2D' }}>
-        This property isn't available — it may have been sold, rented or unpublished.
-        <div style={{ marginTop: 12 }}><a href="/properties" style={{ color: '#E8650A', fontWeight: 600 }}>Browse all properties</a></div>
+      <div style={{ textAlign: 'center', padding: '80px 20px', color: '#5A5048' }}>
+        <span style={{ width: 56, height: 56, borderRadius: 16, background: '#FFF1E6', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+          <HomeSearchIcon size={26} color={BRAND} />
+        </span>
+        <div style={{ fontSize: 15, fontWeight: 600 }}>This property isn't available — it may have been sold, rented or unpublished.</div>
+        <div style={{ marginTop: 12 }}><a href="/properties" style={{ color: BRAND, fontWeight: 700 }}>Browse all properties</a></div>
       </div>
     </div>
   );
@@ -244,12 +301,19 @@ export default function PropertyDetailPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#FAFAF8' }}>
-      <Header companyName={property.companyName} companyHref={`/company/${property.companyId}`} />
+      <Header brand={property.brand ?? toBrand(property.companyName, '', '', '')} companyHref={`/company/${property.companyId}`} />
       <div style={{ maxWidth: 1140, margin: '0 auto', padding: '26px 28px 70px' }}>
-        <button onClick={() => router.back()} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#F5F2EE', border: 'none', borderRadius: 9, padding: '8px 14px', fontSize: 12.5, fontWeight: 700, color: '#5A5048', cursor: 'pointer', marginBottom: 18 }}>‹ Back</button>
+        <button onClick={() => router.back()} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#F5F2EE', border: 'none', borderRadius: 9, padding: '8px 14px', fontSize: 12.5, fontWeight: 700, color: '#5A5048', cursor: 'pointer', marginBottom: 18 }}><ArrowLeftIcon size={15} /> Back</button>
 
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 6, borderRadius: 18, overflow: 'hidden', marginBottom: 22, height: 440 }}>
-          <div onClick={() => openLightbox(0)} style={{ background: hero ? `url(${hero}) center/cover` : '#F0EDE8', cursor: 'pointer' }} />
+          <div onClick={() => openLightbox(0)} style={{ position: 'relative', background: hero ? `url(${hero}) center/cover` : '#F0EDE8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {!hero && <ImagesIcon size={40} color="#C9C2B9" />}
+            {property.images.length > 0 && (
+              <span style={{ position: 'absolute', left: 14, bottom: 14, display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,.92)', color: '#1A120C', borderRadius: 999, padding: '6px 12px', fontSize: 12.5, fontWeight: 700, boxShadow: '0 2px 8px rgba(0,0,0,.12)' }}>
+                <ImagesIcon size={14} /> {property.images.length} {property.images.length === 1 ? 'photo' : 'photos'}
+              </span>
+            )}
+          </div>
           <div style={{ display: 'grid', gridTemplateRows: '1fr 1fr', gap: 6 }}>
             {(sideImgs.length ? sideImgs : [hero, hero]).map((url, i) => (
               <div key={i} onClick={() => openLightbox(sideImgs.length ? i + 1 : 0)} style={{ position: 'relative', background: url ? `url(${url}) center/cover` : '#F0EDE8', cursor: 'pointer' }}>
@@ -265,64 +329,63 @@ export default function PropertyDetailPage() {
               <h1 style={{ fontSize: 26, fontWeight: 800, color: '#0A0604' }}>{property.name}</h1>
               <span style={{ background: lt.isRent ? '#E6F1FB' : '#EAF3DE', color: lt.isRent ? '#185FA5' : '#3B6D11', fontSize: 12, fontWeight: 700, borderRadius: 20, padding: '4px 12px' }}>{lt.tag}</span>
             </div>
-            <div style={{ fontSize: 14, color: '#8A8480', marginBottom: 18 }}>{fullAddr || '—'}</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 24 }}>
-              <div style={{ background: '#fff', border: '1px solid #EAE6E0', borderRadius: 12, padding: 13 }}><div style={{ fontSize: 11, fontWeight: 700, color: '#B8B4AE' }}>PRICE</div><div style={{ fontSize: 16, fontWeight: 800, color: '#E8650A', marginTop: 3 }}>{shortMoney(property.price)}{lt.isRent ? '/mo' : ''}</div></div>
-              <div style={{ background: '#fff', border: '1px solid #EAE6E0', borderRadius: 12, padding: 13 }}><div style={{ fontSize: 11, fontWeight: 700, color: '#B8B4AE' }}>BEDROOMS</div><div style={{ fontSize: 16, fontWeight: 800, marginTop: 3 }}>{property.beds || '—'}</div></div>
-              <div style={{ background: '#fff', border: '1px solid #EAE6E0', borderRadius: 12, padding: 13 }}><div style={{ fontSize: 11, fontWeight: 700, color: '#B8B4AE' }}>BATHROOMS</div><div style={{ fontSize: 16, fontWeight: 800, marginTop: 3 }}>{property.baths || '—'}</div></div>
-              <div style={{ background: '#fff', border: '1px solid #EAE6E0', borderRadius: 12, padding: 13 }}><div style={{ fontSize: 11, fontWeight: 700, color: '#B8B4AE' }}>AREA</div><div style={{ fontSize: 16, fontWeight: 800, marginTop: 3 }}>{formatArea(property.area, property.areaUnit)}</div></div>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 14, color: '#8A8480', marginBottom: 18 }}>
+              <MapPinIcon size={16} color="#B0A89F" style={{ marginTop: 1 }} />
+              <span>{fullAddr || '—'}</span>
             </div>
-            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>Description</div>
-            <div style={{ fontSize: 14, color: '#5A5048', lineHeight: 1.6, whiteSpace: 'pre-line', overflowWrap: 'anywhere' }}>{property.description || 'No description provided.'}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 12, marginBottom: 24 }}>
+              <StatTile icon={RupeeIcon} label="Price" value={`${shortMoney(property.price)}${lt.isRent ? '/mo' : ''}`} accent />
+              <StatTile icon={BedIcon} label="Bedrooms" value={property.beds || '—'} />
+              <StatTile icon={BathIcon} label="Bathrooms" value={property.baths || '—'} />
+              <StatTile icon={RulerIcon} label="Area" value={formatArea(property.area, property.areaUnit)} />
+            </div>
 
             {lt.isRent ? (
-              <div style={{ marginTop: 18, display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(170px,1fr))', gap: 10 }}>
-                <div style={{ background: '#fff', border: '1px solid #EAE6E0', borderRadius: 12, padding: 13 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#B8B4AE' }}>RENT FREQUENCY</div>
-                  <div style={{ fontSize: 14, fontWeight: 700, marginTop: 4 }}>
-                    {property.rentFrequency ? property.rentFrequency.toUpperCase() : '—'}
-                  </div>
-                </div>
-                <div style={{ background: '#fff', border: '1px solid #EAE6E0', borderRadius: 12, padding: 13 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#B8B4AE' }}>SECURITY DEPOSIT</div>
-                  <div style={{ fontSize: 14, fontWeight: 700, marginTop: 4 }}>{property.securityDeposit || '—'}</div>
-                </div>
-                <div style={{ background: '#fff', border: '1px solid #EAE6E0', borderRadius: 12, padding: 13 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#B8B4AE' }}>MAINTENANCE</div>
-                  <div style={{ fontSize: 14, fontWeight: 700, marginTop: 4 }}>{property.maintenanceCharges || '—'}</div>
-                </div>
-                <div style={{ background: '#fff', border: '1px solid #EAE6E0', borderRadius: 12, padding: 13 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#B8B4AE' }}>AVAILABLE FROM</div>
-                  <div style={{ fontSize: 14, fontWeight: 700, marginTop: 4 }}>{property.availableFrom || '—'}</div>
+              <div style={{ marginBottom: 24 }}>
+                <CardTitle icon={CalendarIcon} size={16}>Rental terms</CardTitle>
+                <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(170px,1fr))', gap: 12 }}>
+                  <StatTile icon={RepeatIcon} label="Rent frequency" value={property.rentFrequency ? property.rentFrequency.charAt(0).toUpperCase() + property.rentFrequency.slice(1) : '—'} />
+                  <StatTile icon={ShieldCheckIcon} label="Security deposit" value={property.securityDeposit || '—'} />
+                  <StatTile icon={WrenchIcon} label="Maintenance" value={property.maintenanceCharges || '—'} />
+                  <StatTile icon={CalendarIcon} label="Available from" value={property.availableFrom || '—'} />
                 </div>
               </div>
             ) : null}
+
+            <div style={{ background: '#fff', border: '1px solid #EAE6E0', borderRadius: 16, padding: 18 }}>
+              <CardTitle icon={FileTextIcon} size={16}>Description</CardTitle>
+              <div style={{ marginTop: 10, fontSize: 14, color: '#5A5048', lineHeight: 1.65, whiteSpace: 'pre-line', overflowWrap: 'anywhere' }}>{property.description || 'No description provided.'}</div>
+            </div>
           </div>
 
           <div style={{ flex: '1 1 280px', minWidth: 270, display: 'flex', flexDirection: 'column', gap: 16 }}>
             {property.allowContact && (
               <div style={{ background: '#fff', border: '1px solid #EAE6E0', borderRadius: 16, padding: 18 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 13 }}>Agent Details</div>
+                <div style={{ marginBottom: 13 }}><CardTitle icon={PhoneIcon}>Agent Details</CardTitle></div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 14 }}>
                   <div style={{ width: 42, height: 42, borderRadius: '50%', background: '#E8650A', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700 }}>{(property.agentName.match(/\b\w/g) || ['?']).slice(0, 2).join('').toUpperCase()}</div>
-                  <div><div style={{ fontSize: 14, fontWeight: 700 }}>{property.agentName || '—'}</div><div style={{ fontSize: 12, color: '#8A8480' }}>{property.agentPhone}</div></div>
+                  <div><div style={{ fontSize: 14, fontWeight: 700 }}>{property.agentName || '—'}</div>{property.agentPhone ? <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#8A8480', marginTop: 2 }}><PhoneIcon size={12} />{property.agentPhone}</div> : null}</div>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <a target='_blank' href={property.agentPhone ? `tel:+${property.agentPhone.replace(/\D/g, '')}` : '#'} onClick={() => track(EVENTS.AGENT_CONTACTED, { property_uid: uid, channel: 'call' })} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, background: '#E8650A', color: '#fff', borderRadius: 11, padding: 11, fontSize: 13.5, fontWeight: 700 }}>Call</a>
-                  <a target='_blank' href={property.agentPhone ? `https://wa.me/${property.agentPhone.replace(/\D/g, '')}` : '#'} onClick={() => track(EVENTS.AGENT_CONTACTED, { property_uid: uid, channel: 'whatsapp' })} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, background: '#fff', color: '#3B6D11', border: '1px solid #C0DD97', borderRadius: 11, padding: 11, fontSize: 13.5, fontWeight: 700 }}>WhatsApp</a>
+                  <a target='_blank' href={property.agentPhone ? `tel:+${property.agentPhone.replace(/\D/g, '')}` : '#'} onClick={() => track(EVENTS.AGENT_CONTACTED, { property_uid: uid, channel: 'call' })} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, background: '#E8650A', color: '#fff', borderRadius: 11, padding: 11, fontSize: 13.5, fontWeight: 700 }}><PhoneIcon size={15} /> Call</a>
+                  <a target='_blank' href={property.agentPhone ? `https://wa.me/${property.agentPhone.replace(/\D/g, '')}` : '#'} onClick={() => track(EVENTS.AGENT_CONTACTED, { property_uid: uid, channel: 'whatsapp' })} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, background: '#fff', color: '#3B6D11', border: '1px solid #C0DD97', borderRadius: 11, padding: 11, fontSize: 13.5, fontWeight: 700 }}><MessageCircleIcon size={15} /> WhatsApp</a>
                 </div>
               </div>
             )}
 
             {property.allowMeeting && (
               <div style={{ background: '#fff', border: '1px solid #EAE6E0', borderRadius: 16, padding: 18 }}>
-                <div style={{ fontSize: 14, fontWeight: 800, color: '#1F2A37' }}>Take a tour</div>
+                <CardTitle icon={CalendarCheckIcon}>Take a tour</CardTitle>
                 <div style={{ fontSize: 12.5, color: '#7A726A', marginTop: 4 }}>Book an on-site or online visit with the agent</div>
                 <button
                   onClick={openMeetingModal}
                   style={{
                     marginTop: 12,
                     width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
                     background: '#fff',
                     color: '#3A3530',
                     border: '1px solid #ECE7DF',
@@ -333,16 +396,17 @@ export default function PropertyDetailPage() {
                     cursor: 'pointer',
                   }}
                 >
-                  Book Appointment
+                  <CalendarIcon size={15} /> Book Appointment
                 </button>
               </div>
             )}
 
             <div style={{ background: '#fff', border: '1px solid #EAE6E0', borderRadius: 16, padding: 18 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>Send an enquiry</div>
+              <div style={{ marginBottom: 4 }}><CardTitle icon={SendIcon}>Send an enquiry</CardTitle></div>
               <div style={{ fontSize: 12.5, color: '#8A8480', marginBottom: 14 }}>The agent will get back to you shortly.</div>
               {sent ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 9, background: '#EAF3DE', border: '1px solid #C0DD97', borderRadius: 11, padding: '12px 14px' }}>
+                  <CircleCheckIcon size={18} color="#3B6D11" />
                   <span style={{ fontSize: 13, fontWeight: 600, color: '#3B6D11' }}>Enquiry sent — thank you!</span>
                 </div>
               ) : (
@@ -351,16 +415,17 @@ export default function PropertyDetailPage() {
                   <input value={enquiry.phone} onChange={e => setEnquiry({ ...enquiry, phone: e.target.value })} placeholder="Phone number" style={{ border: '1.5px solid #E8E4DE', borderRadius: 10, padding: '10px 12px', fontSize: 13.5, outline: 'none' }} />
                   <textarea value={enquiry.message} onChange={e => setEnquiry({ ...enquiry, message: e.target.value })} placeholder="I'm interested in this property…" style={{ border: '1.5px solid #E8E4DE', borderRadius: 10, padding: '10px 12px', fontSize: 13.5, outline: 'none', minHeight: 64, resize: 'none' }} />
                   {enquiryError ? (
-                    <div style={{ background: '#FCEBEB', border: '1px solid #F1C9C9', borderRadius: 9, color: '#A32D2D', padding: '9px 11px', fontSize: 12.5 }}>
+                    <div role="alert" style={{ display: 'flex', alignItems: 'flex-start', gap: 7, background: '#FCEBEB', border: '1px solid #F1C9C9', borderRadius: 9, color: '#A32D2D', padding: '9px 11px', fontSize: 12.5 }}>
+                      <CircleAlertIcon size={15} style={{ marginTop: 1 }} />
                       {enquiryError}
                     </div>
                   ) : null}
                   <button
                     onClick={submitEnquiry}
                     disabled={enquirySubmitting}
-                    style={{ background: '#E8650A', color: '#fff', border: 'none', borderRadius: 10, padding: 11, fontSize: 13.5, fontWeight: 700, cursor: enquirySubmitting ? 'not-allowed' : 'pointer', opacity: enquirySubmitting ? 0.75 : 1 }}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: '#E8650A', color: '#fff', border: 'none', borderRadius: 10, padding: 11, fontSize: 13.5, fontWeight: 700, cursor: enquirySubmitting ? 'not-allowed' : 'pointer', opacity: enquirySubmitting ? 0.75 : 1 }}
                   >
-                    {enquirySubmitting ? 'Sending...' : 'Send enquiry'}
+                    {enquirySubmitting ? 'Sending…' : <><SendIcon size={15} /> Send enquiry</>}
                   </button>
                 </div>
               )}
@@ -374,12 +439,12 @@ export default function PropertyDetailPage() {
         <div onClick={() => setLightboxOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(10,6,4,.92)', zIndex: 600, display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 22px' }}>
             <span style={{ color: '#fff', fontSize: 13, fontWeight: 600 }}>{lightboxIdx + 1} / {images.length}</span>
-            <button onClick={() => setLightboxOpen(false)} style={{ width: 34, height: 34, borderRadius: 9, background: 'rgba(255,255,255,.12)', border: 'none', color: '#fff', cursor: 'pointer' }}>✕</button>
+            <button aria-label="Close photos" onClick={() => setLightboxOpen(false)} style={{ width: 44, height: 44, borderRadius: 11, background: 'rgba(255,255,255,.12)', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><XIcon size={20} /></button>
           </div>
           <div onClick={e => e.stopPropagation()} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, padding: '0 20px 20px', minHeight: 0 }}>
-            <button onClick={() => setLightboxIdx(i => (i - 1 + images.length) % images.length)} style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(255,255,255,.12)', border: 'none', color: '#fff', cursor: 'pointer', flexShrink: 0 }}>‹</button>
+            <button onClick={() => setLightboxIdx(i => (i - 1 + images.length) % images.length)} style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(255,255,255,.12)', border: 'none', color: '#fff', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} aria-label="Previous photo"><ChevronLeftIcon size={22} /></button>
             <img src={images[lightboxIdx]} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 8 }} />
-            <button onClick={() => setLightboxIdx(i => (i + 1) % images.length)} style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(255,255,255,.12)', border: 'none', color: '#fff', cursor: 'pointer', flexShrink: 0 }}>›</button>
+            <button onClick={() => setLightboxIdx(i => (i + 1) % images.length)} style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(255,255,255,.12)', border: 'none', color: '#fff', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} aria-label="Next photo"><ChevronRightIcon size={22} /></button>
           </div>
         </div>
       )}
@@ -412,15 +477,16 @@ export default function PropertyDetailPage() {
           >
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
               <div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: '#18212D' }}>Book a Meeting</div>
+                <CardTitle icon={CalendarCheckIcon} size={18}>Book a Meeting</CardTitle>
                 <div style={{ fontSize: 15, color: '#6F7785', marginTop: 5 }}>Schedule a visit for "{property.name}"</div>
               </div>
               <button
                 type="button"
+                aria-label="Close"
                 onClick={closeMeetingModal}
-                style={{ background: 'transparent', border: 'none', color: '#8A95A6', fontSize: 26, lineHeight: 1, cursor: 'pointer' }}
+                style={{ width: 44, height: 44, marginTop: -8, marginRight: -8, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', color: '#8A95A6', cursor: 'pointer' }}
               >
-                ×
+                <XIcon size={20} />
               </button>
             </div>
 
@@ -499,7 +565,7 @@ export default function PropertyDetailPage() {
                       checked={meeting.type === 'onsite'}
                       onChange={() => setMeeting({ ...meeting, type: 'onsite' })}
                     />
-                    Onsite
+                    <MapPinIcon size={14} color="#7A726A" /> Onsite
                   </label>
                   <label style={{ display: 'inline-flex', alignItems: 'center', gap: 7, cursor: 'pointer' }}>
                     <input
@@ -507,19 +573,21 @@ export default function PropertyDetailPage() {
                       checked={meeting.type === 'online'}
                       onChange={() => setMeeting({ ...meeting, type: 'online' })}
                     />
-                    Online
+                    <VideoIcon size={14} color="#7A726A" /> Online
                   </label>
                 </div>
               </div>
 
               {meetingError ? (
-                <div style={{ background: '#FCEBEB', border: '1px solid #F1C9C9', borderRadius: 9, color: '#A32D2D', padding: '9px 11px', fontSize: 13 }}>
+                <div role="alert" style={{ display: 'flex', alignItems: 'flex-start', gap: 7, background: '#FCEBEB', border: '1px solid #F1C9C9', borderRadius: 9, color: '#A32D2D', padding: '9px 11px', fontSize: 13 }}>
+                  <CircleAlertIcon size={16} style={{ marginTop: 1 }} />
                   {meetingError}
                 </div>
               ) : null}
 
               {meetingSent ? (
-                <div style={{ background: '#EAF3DE', border: '1px solid #C0DD97', borderRadius: 9, color: '#3B6D11', padding: '9px 11px', fontSize: 13, fontWeight: 600 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7, background: '#EAF3DE', border: '1px solid #C0DD97', borderRadius: 9, color: '#3B6D11', padding: '9px 11px', fontSize: 13, fontWeight: 600 }}>
+                  <CircleCheckIcon size={16} style={{ marginTop: 1 }} />
                   Request submitted successfully. The agent will contact you soon.
                 </div>
               ) : null}
