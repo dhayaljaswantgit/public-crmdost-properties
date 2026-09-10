@@ -15,7 +15,7 @@ export const API_V1_BASE = `${API_BASE}/v1`;
 
 export type Property = {
   id: string; companyId: string; companyName: string; name: string;
-  price: string; currency: string; type: string; beds: string; baths: string; area: string;
+  price: string; currency: string; type: string; beds: string; baths: string; area: string; areaUnit: string;
   listingType: 'sale' | 'rent';
   rentFrequency: 'monthly' | 'quarterly' | 'yearly' | '';
   securityDeposit: string;
@@ -47,7 +47,7 @@ function mapProperty(raw: any): Property {
     securityDeposit: String(raw.security_deposit || ''),
     maintenanceCharges: String(raw.maintenance_charges || ''),
     availableFrom: String(raw.available_from || ''),
-    area: String(raw.sqft || ''), society: raw.society_name || '', sector: raw.sector || '',
+    area: String(raw.sqft || ''), areaUnit: String(raw.area_unit || ''), society: raw.society_name || '', sector: raw.sector || '',
     addr1: raw.address || '', addr2: raw.address2nd || '', description: raw.description || '',
     images: Array.isArray(raw.images) ? raw.images : [],
     agentName, agentPhone, allowContact: !!raw.allow_contact, allowMeeting: !!raw.allow_meeting
@@ -102,9 +102,25 @@ export async function fetchPublicCompany(uid: string) {
   return { company: mapCompany(data.company || {}), properties: propsRaw.map(mapProperty) };
 }
 
-// GET /property/:uid requires an auth token we don't have on the public site, so instead of calling it,
-// we cache each property object as soon as it's fetched from the public list/company endpoints and
-// look it up again when the user opens its detail page.
+/**
+ * One published property, always fresh from the API.
+ *
+ * Returns null when it doesn't exist or isn't public (the API answers 4xx for
+ * both, so an unpublished listing can never be shown from a stale copy).
+ * Throws on a network/server failure so the caller can fall back to a cached
+ * copy rather than claim the property is gone.
+ */
+export async function fetchPublicProperty(uid: string): Promise<Property | null> {
+  const res = await fetch(`${API_V1_BASE}/property/${encodeURIComponent(uid)}`, { cache: 'no-store' });
+  if (res.status >= 400 && res.status < 500) return null;
+  if (!res.ok) throw new Error('Failed to load property (' + res.status + ')');
+  const json = await res.json();
+  return json?.data ? mapProperty(json.data) : null;
+}
+
+// A copy of each property seen on the list/company pages, so opening one from
+// there paints instantly. The detail page still re-fetches — this is only a
+// head start, never the source of truth.
 export function cacheProperty(p: Property) {
   if (typeof window === 'undefined') return;
   try { sessionStorage.setItem('crmdost:property:' + p.id, JSON.stringify(p)); } catch {}
@@ -112,4 +128,9 @@ export function cacheProperty(p: Property) {
 export function getCachedProperty(id: string): Property | null {
   if (typeof window === 'undefined') return null;
   try { const raw = sessionStorage.getItem('crmdost:property:' + id); return raw ? JSON.parse(raw) : null; } catch { return null; }
+}
+
+export function forgetCachedProperty(id: string) {
+  if (typeof window === 'undefined') return;
+  try { sessionStorage.removeItem('crmdost:property:' + id); } catch {}
 }

@@ -1,4 +1,5 @@
 'use client';
+import { formatArea } from '@/lib/area';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '../components/Header';
@@ -94,7 +95,7 @@ function StatIcons({ p }: { p: Property }) {
 			</span>
 			<span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
 				<svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#B8B4AE" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z" /></svg>
-				{p.area ? p.area + ' sq ft' : '—'}
+				{formatArea(p.area, p.areaUnit)}
 			</span>
 		</div>
 	);

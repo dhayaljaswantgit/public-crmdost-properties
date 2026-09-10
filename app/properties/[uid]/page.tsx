@@ -1,8 +1,9 @@
 'use client';
+import { formatArea } from '@/lib/area';
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Header from '../../../components/Header';
-import { API_V1_BASE, shortMoney, listingTag, getCachedProperty, Property } from '../../../lib/api';
+import { API_V1_BASE, shortMoney, listingTag, getCachedProperty, cacheProperty, fetchPublicProperty, forgetCachedProperty, Property } from '../../../lib/api';
 import { track, EVENTS } from '../../../lib/analytics';
 
 const toDateInputValue = (date: Date) => {
@@ -43,20 +44,45 @@ export default function PropertyDetailPage() {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIdx, setLightboxIdx] = useState(0);
 
+  /*
+    Show the copy from the listing page at once if there is one, then always
+    fetch the live property. Reading only that copy is why a refresh never
+    showed CRM edits, and why a shared or search-engine link — which has no copy
+    — could not open at all.
+  */
   useEffect(() => {
+    let cancelled = false;
     const cached = getCachedProperty(uid);
-    if (cached) {
-      setProperty(cached);
-      track(EVENTS.PROPERTY_VIEWED, {
-        property_uid: uid,
-        listing_type: cached.listingType || undefined,
+    if (cached) setProperty(cached);
+
+    fetchPublicProperty(uid)
+      .then((fresh) => {
+        if (cancelled) return;
+        if (!fresh) {
+          // Unpublished or removed: never keep showing the stale copy.
+          forgetCachedProperty(uid);
+          setProperty(null);
+          setNotFound(true);
+          track(EVENTS.DIRECT_LANDING_FAILED, { property_uid: uid });
+          return;
+        }
+        cacheProperty(fresh);
+        setProperty(fresh);
+        track(EVENTS.PROPERTY_VIEWED, {
+          property_uid: uid,
+          listing_type: fresh.listingType || undefined,
+        });
+      })
+      .catch(() => {
+        // Network trouble: a cached copy is better than an error page.
+        if (cancelled || cached) return;
+        setNotFound(true);
+        track(EVENTS.DIRECT_LANDING_FAILED, { property_uid: uid });
       });
-    } else {
-      setNotFound(true);
-      // Direct/shared/SEO landings currently fail (detail needs the list cache)
-      // — this measures how much traffic that failure costs.
-      track(EVENTS.DIRECT_LANDING_FAILED, { property_uid: uid });
-    }
+
+    return () => {
+      cancelled = true;
+    };
   }, [uid]);
 
   const imageCount = property?.images?.length || 0;
@@ -91,8 +117,8 @@ export default function PropertyDetailPage() {
     <div style={{ minHeight: '100vh', background: '#FAFAF8' }}>
       <Header />
       <div style={{ textAlign: 'center', padding: '80px 20px', color: '#A32D2D' }}>
-        Property details aren't available directly — please open this property from the <a href="/properties">listings page</a> first.
-        <div style={{ fontSize: 12, color: '#8A8480', marginTop: 8 }}>(GET /property/:uid requires authentication we don't have on the public site, so detail pages are populated from the public list/company responses.)</div>
+        This property isn't available — it may have been sold, rented or unpublished.
+        <div style={{ marginTop: 12 }}><a href="/properties" style={{ color: '#E8650A', fontWeight: 600 }}>Browse all properties</a></div>
       </div>
     </div>
   );
@@ -244,10 +270,10 @@ export default function PropertyDetailPage() {
               <div style={{ background: '#fff', border: '1px solid #EAE6E0', borderRadius: 12, padding: 13 }}><div style={{ fontSize: 11, fontWeight: 700, color: '#B8B4AE' }}>PRICE</div><div style={{ fontSize: 16, fontWeight: 800, color: '#E8650A', marginTop: 3 }}>{shortMoney(property.price)}{lt.isRent ? '/mo' : ''}</div></div>
               <div style={{ background: '#fff', border: '1px solid #EAE6E0', borderRadius: 12, padding: 13 }}><div style={{ fontSize: 11, fontWeight: 700, color: '#B8B4AE' }}>BEDROOMS</div><div style={{ fontSize: 16, fontWeight: 800, marginTop: 3 }}>{property.beds || '—'}</div></div>
               <div style={{ background: '#fff', border: '1px solid #EAE6E0', borderRadius: 12, padding: 13 }}><div style={{ fontSize: 11, fontWeight: 700, color: '#B8B4AE' }}>BATHROOMS</div><div style={{ fontSize: 16, fontWeight: 800, marginTop: 3 }}>{property.baths || '—'}</div></div>
-              <div style={{ background: '#fff', border: '1px solid #EAE6E0', borderRadius: 12, padding: 13 }}><div style={{ fontSize: 11, fontWeight: 700, color: '#B8B4AE' }}>AREA</div><div style={{ fontSize: 16, fontWeight: 800, marginTop: 3 }}>{property.area ? property.area + ' sq ft' : '—'}</div></div>
+              <div style={{ background: '#fff', border: '1px solid #EAE6E0', borderRadius: 12, padding: 13 }}><div style={{ fontSize: 11, fontWeight: 700, color: '#B8B4AE' }}>AREA</div><div style={{ fontSize: 16, fontWeight: 800, marginTop: 3 }}>{formatArea(property.area, property.areaUnit)}</div></div>
             </div>
             <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>Description</div>
-            <div style={{ fontSize: 14, color: '#5A5048', lineHeight: 1.6 }}>{property.description || 'No description provided.'}</div>
+            <div style={{ fontSize: 14, color: '#5A5048', lineHeight: 1.6, whiteSpace: 'pre-line', overflowWrap: 'anywhere' }}>{property.description || 'No description provided.'}</div>
 
             {lt.isRent ? (
               <div style={{ marginTop: 18, display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(170px,1fr))', gap: 10 }}>
@@ -282,8 +308,8 @@ export default function PropertyDetailPage() {
                   <div><div style={{ fontSize: 14, fontWeight: 700 }}>{property.agentName || '—'}</div><div style={{ fontSize: 12, color: '#8A8480' }}>{property.agentPhone}</div></div>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <a href={property.agentPhone ? `tel:+${property.agentPhone.replace(/\D/g, '')}` : '#'} onClick={() => track(EVENTS.AGENT_CONTACTED, { property_uid: uid, channel: 'call' })} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, background: '#E8650A', color: '#fff', borderRadius: 11, padding: 11, fontSize: 13.5, fontWeight: 700 }}>Call</a>
-                  <a href={property.agentPhone ? `https://wa.me/${property.agentPhone.replace(/\D/g, '')}` : '#'} onClick={() => track(EVENTS.AGENT_CONTACTED, { property_uid: uid, channel: 'whatsapp' })} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, background: '#fff', color: '#3B6D11', border: '1px solid #C0DD97', borderRadius: 11, padding: 11, fontSize: 13.5, fontWeight: 700 }}>WhatsApp</a>
+                  <a target='_blank' href={property.agentPhone ? `tel:+${property.agentPhone.replace(/\D/g, '')}` : '#'} onClick={() => track(EVENTS.AGENT_CONTACTED, { property_uid: uid, channel: 'call' })} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, background: '#E8650A', color: '#fff', borderRadius: 11, padding: 11, fontSize: 13.5, fontWeight: 700 }}>Call</a>
+                  <a target='_blank' href={property.agentPhone ? `https://wa.me/${property.agentPhone.replace(/\D/g, '')}` : '#'} onClick={() => track(EVENTS.AGENT_CONTACTED, { property_uid: uid, channel: 'whatsapp' })} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, background: '#fff', color: '#3B6D11', border: '1px solid #C0DD97', borderRadius: 11, padding: 11, fontSize: 13.5, fontWeight: 700 }}>WhatsApp</a>
                 </div>
               </div>
             )}
