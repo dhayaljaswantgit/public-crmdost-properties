@@ -55,9 +55,13 @@ npm run dev
 npm run build
 ```
 
-### Staging deploy (automatic)
+### Firebase Hosting
 
-Every push to `v2` runs `.github/workflows/deploy-staging.yml`, which publishes to Firebase Hosting site `crm-dost-properties` (project `crm-dost-staging`) → https://test.properties.crmdost.com. The site is server-rendered, so it uses Firebase's Next.js integration (`FIREBASE_CLI_EXPERIMENTS=webframeworks`): static files on Hosting, the server part on Cloud Functions in `asia-south1` (`firebase.json` → `frameworksBackend`). This requires the Blaze plan. `NEXT_PUBLIC_*` values are written to `.env.production` in the workflow.
+`firebase.json` / `.firebaserc` target Hosting site `crm-dost-properties` (project `crm-dost-staging`, https://test.properties.crmdost.com). The site is server-rendered, so it deploys through Firebase's Next.js integration — static files on Hosting, the server part on Cloud Functions in `asia-south1` (`frameworksBackend`), Blaze plan required:
+
+```bash
+FIREBASE_CLI_EXPERIMENTS=webframeworks npx firebase-tools deploy --only hosting:crm-dost-properties --project crm-dost-staging
+```
 
 Docker image builds use `npm ci` for reproducible dependency installation and a `.dockerignore` that excludes local artifacts (`node_modules`, `.next`, `.env`, `.git`).
 
