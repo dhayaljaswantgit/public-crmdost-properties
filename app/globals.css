@@ -20,3 +20,29 @@ input, select, textarea, button { font-family: inherit; }
 /* In a column flexbox, a child with max-width + auto margins shrinks to its
    content; keep page sections full-width (their max-width still centres them). */
 .cd-page > * { width: 100%; box-sizing: border-box; }
+
+/* Centred page title in the header: wide screens only, where the bar has room. */
+.cd-header-title { display: none; }
+@media (min-width: 1100px) { .cd-header-title { display: block; } }
+
+/* Property page contact bar: phones and small tablets only. */
+.cd-contact-bar { display: none; }
+@media (max-width: 899px) {
+  .cd-contact-bar { display: flex; }
+  .cd-has-contact-bar { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+}
+
+/* Phones: the 28px desktop gutters waste a lot of a 375px screen. */
+@media (max-width: 600px) {
+  .cd-container { padding-left: 14px !important; padding-right: 14px !important; }
+  .cd-detail-hero { height: 280px !important; border-radius: 14px !important; }
+}
+
+/* Company page on phones: the banner is short there, so the card overlaps it
+   by ~20% instead of 15vh (which hid most of it); search gets its own row and
+   the two filters share the next. */
+@media (max-width: 600px) {
+  .cd-company-overlap { margin-top: -32px !important; }
+  .cd-filter-search { flex-basis: 100% !important; min-width: 0 !important; }
+  .cd-filter-select { flex: 1 1 0; min-width: 0; }
+}

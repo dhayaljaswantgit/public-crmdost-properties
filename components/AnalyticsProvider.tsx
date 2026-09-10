@@ -3,6 +3,7 @@
 import { useEffect, Suspense } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { initAnalytics, trackPageView } from "../lib/analytics";
+import { noteRouteChange } from "../lib/in-app-history";
 
 /**
  * Initializes PostHog once and emits a pageview on every client-side route
@@ -18,7 +19,10 @@ function PageViewTracker() {
   }, []);
 
   useEffect(() => {
-    if (pathname) trackPageView(pathname);
+    if (pathname) {
+      trackPageView(pathname);
+      noteRouteChange(pathname);
+    }
     // searchParams is included so a ?plan= change on the same path still counts.
   }, [pathname, searchParams]);
 

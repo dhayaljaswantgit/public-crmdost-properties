@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import { fetchPublicProperties, shortMoney, listingTag, cacheProperty, Property } from '../lib/api';
+import { fetchPublicProperties, shortMoney, listingTag, cacheProperty, propertyPath, Property } from '../lib/api';
 import { track, EVENTS } from '../lib/analytics';
 
 const PER_PAGE = 12;
@@ -217,12 +217,12 @@ export default function HomePage() {
 		sorted.forEach(n => { if (prev && n - prev > 1) pageNums.push('ellipsis'); pageNums.push(n); prev = n; });
 	}
 
-	const openDetail = (p: Property) => { cacheProperty(p); router.push(`/properties/${p.id}`); };
+	const openDetail = (p: Property) => { cacheProperty(p); router.push(propertyPath(p)); };
 
 	return (
 		<div className="cd-page">
 			<Header />
-			<div style={{ maxWidth: 1180, margin: '0 auto', padding: '32px 28px 70px', animation: 'pf-fade .2s ease' }}>
+			<div className="cd-container" style={{ maxWidth: 1180, margin: '0 auto', padding: '32px 28px 70px', animation: 'pf-fade .2s ease' }}>
 				<div style={{ marginBottom: 22 }}>
 					<div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', color: '#E8650A', marginBottom: 6 }}>BROWSE ALL LISTINGS</div>
 					<h1 style={{ fontSize: 24, fontWeight: 800, color: '#0A0604', letterSpacing: '-.01em' }}>Properties across CRM Dost</h1>

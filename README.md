@@ -15,11 +15,22 @@ The site is wired to the public API endpoints and supports:
 
 ## Routes
 
-- `/` — Canonical listings page: search, property type filter, buy/rent filter, company filter, and paginated results
-- `/properties` — Legacy alias that redirects to `/`
-- `/company/[uid]` — Canonical company page with banner, stats, search, and filters
-- `/properties/company/[uid]` — Legacy alias that redirects to `/company/[uid]`
-- `/properties/[uid]` — Property detail page populated from data already fetched on the listings/company pages
+- `/` — Listings page: search, property type filter, buy/rent filter, company filter, and paginated results
+- `/[companySlug]` — Company page (banner, stats, search, filters). Canonical company URL.
+- `/[companySlug]/[propertySlug]` — Property detail. Canonical property URL; a property opened under the wrong company slug redirects to its own.
+- `/company/[id]`, `/properties/[slug]`, `/properties/company/[id]`, `/properties` — legacy links; permanent (308) redirects to the canonical URLs so links already shared keep working.
+
+Company slugs sit at the site root, so they must never equal a top-level route or `public/` file. The backend refuses those (`RESERVED_SLUGS` in `nodejs-server/src/utils/slug.ts`) — add any new top-level route or public file there too.
+
+## Link previews and SEO
+
+`app/[companySlug]/page.tsx` and `app/[companySlug]/[propertySlug]/page.tsx` are server components that set the title, description, canonical URL and Open Graph / Twitter tags (`lib/seo.ts`), then render the client pages in `components/`.
+
+- Company: `CRM Dost Properties | Public Listing | {company}` with the site description.
+- Property: `{property} | {company} | CRM Dost Properties`; description is the first ~155 characters of the listing's own description.
+- Share image (`opengraph-image.tsx` in each segment): the company's first banner image, or the property's first photo, cropped to 1200×630 on the fly with `sharp`, with the company logo on a white card. JPEG (~30–120 KB) because chat apps drop heavy previews. Falls back to the default banner.
+
+Metadata and share images re-fetch from the API at most every 5 minutes (`SEO_REVALIDATE`).
 
 ## API configuration
 
@@ -48,8 +59,7 @@ Docker image builds use `npm ci` for reproducible dependency installation and a 
 
 ## Notes
 
-- The public site does not have access to the authenticated `GET /property/:uid` endpoint, so detail pages are populated from cached data fetched earlier from the public list/company responses.
-- If a property is opened directly without first visiting it from the listings or company page, the app shows a friendly fallback message instead of failing silently.
+- `sharp` is a runtime dependency (share images). `npm ci` installs the right native build per platform, including Alpine (musl) in Docker.
 - Listing type is derived from the backend `listing_type` field (`sale` or `rent`), with a deterministic fallback for older records that do not yet return it.
 - Requests include the `ngrok-skip-browser-warning` header so browser-like requests work correctly against ngrok tunnels.
 

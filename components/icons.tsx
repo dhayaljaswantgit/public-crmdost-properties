@@ -128,6 +128,7 @@ export const PhoneIcon = svg(
 );
 
 export const UserRoundIcon = svg(<><circle cx="12" cy="8" r="5" /><path d="M20 21a8 8 0 0 0-16 0" /></>);
+export const SearchIcon = svg(<><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></>);
 export const MessageCircleIcon = svg(<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />);
 export const SendIcon = svg(<><path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" /></>);
 export const CircleCheckIcon = svg(<><circle cx="12" cy="12" r="10" /><path d="m9 12 2 2 4-4" /></>);
