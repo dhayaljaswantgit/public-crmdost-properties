@@ -70,8 +70,10 @@ jobs:
             exit 1
           fi
           echo "Deploying as $(jq -r .client_email "$GOOGLE_APPLICATION_CREDENTIALS")"
+          # "Re-run jobs → Enable debug logging" sets RUNNER_DEBUG=1, which adds
+          # --debug below and prints the underlying Google API error.
           npx --yes firebase-tools@13 deploy \
             --only hosting:crm-dost-properties \
             --project crm-dost-staging \
-            --non-interactive \
+            --non-interactive ${RUNNER_DEBUG:+--debug} \
             --message "${GITHUB_SHA::7} · run ${GITHUB_RUN_NUMBER}"
