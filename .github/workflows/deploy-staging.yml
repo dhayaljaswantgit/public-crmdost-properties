@@ -58,8 +58,18 @@ jobs:
           SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_STAGING }}
           FIREBASE_CLI_EXPERIMENTS: webframeworks
         run: |
+          # Secrets are per repository: this repo needs its own copy.
+          if [ -z "$SERVICE_ACCOUNT" ]; then
+            echo "::error::Secret FIREBASE_SERVICE_ACCOUNT_STAGING is not set in this repository (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-sa.json"
           printf '%s' "$SERVICE_ACCOUNT" > "$GOOGLE_APPLICATION_CREDENTIALS"
+          if ! jq -e '.type == "service_account" and .client_email and .private_key' "$GOOGLE_APPLICATION_CREDENTIALS" > /dev/null; then
+            echo "::error::FIREBASE_SERVICE_ACCOUNT_STAGING is not a service-account key JSON (paste the whole downloaded .json file)."
+            exit 1
+          fi
+          echo "Deploying as $(jq -r .client_email "$GOOGLE_APPLICATION_CREDENTIALS")"
           npx --yes firebase-tools@13 deploy \
             --only hosting:crm-dost-properties \
             --project crm-dost-staging \
