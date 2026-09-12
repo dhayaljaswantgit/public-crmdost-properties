@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import './globals.css';
+import AnalyticsProvider from "../components/AnalyticsProvider";
 
-const rawSiteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://crmdost.com';
+const rawSiteUrl = process.env.NEXT_PUBLIC_SITE_URL_PROPERTIES || 'https://crmdost.com';
 const siteUrl = rawSiteUrl.replace(/\/$/, '');
 
 export const metadata: Metadata = {
@@ -60,7 +61,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
       </head>
-      <body>{children}</body>
+      <body>
+        <AnalyticsProvider />{children}</body>
     </html>
   );
 }

@@ -1,8 +1,11 @@
 'use client';
+import { formatArea } from '@/lib/area';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '../components/Header';
-import { fetchPublicProperties, shortMoney, listingTag, cacheProperty, Property } from '../lib/api';
+import Footer from '../components/Footer';
+import { fetchPublicProperties, shortMoney, listingTag, cacheProperty, propertyPath, Property } from '../lib/api';
+import { track, EVENTS } from '../lib/analytics';
 
 const PER_PAGE = 12;
 const HOME_STATE_KEY = 'crmdost:home-state:v1';
@@ -93,14 +96,22 @@ function StatIcons({ p }: { p: Property }) {
 			</span>
 			<span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
 				<svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#B8B4AE" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z" /></svg>
-				{p.area ? p.area + ' sq ft' : '—'}
+				{formatArea(p.area, p.areaUnit)}
 			</span>
 		</div>
 	);
 }
 
 export default function HomePage() {
-	const cachedHomeState = memoryHomeState || readCachedHomeState();
+	/*
+	  The first render must match the server's HTML, and the server has no
+	  sessionStorage. So only the in-memory copy (set by a previous visit in this
+	  tab, i.e. a client navigation that does not hydrate) is used here; the
+	  sessionStorage copy (a hard refresh) is restored in an effect below.
+	  Reading sessionStorage during render caused "Text content did not match"
+	  and threw away the server HTML.
+	*/
+	const cachedHomeState = memoryHomeState;
 	const router = useRouter();
 	const [items, setItems] = useState<Property[]>(cachedHomeState?.items || []);
 	const [total, setTotal] = useState(cachedHomeState?.total || 0);
@@ -111,8 +122,29 @@ export default function HomePage() {
 	const [companyFilter, setCompanyFilter] = useState(cachedHomeState?.companyFilter || 'any');
 	const [loading, setLoading] = useState((cachedHomeState?.items?.length || 0) === 0);
 	const [error, setError] = useState('');
-	const hasMountedRef = useRef(false);
+	const [restored, setRestored] = useState(!!cachedHomeState);
+	/** The search/type last loaded, so restoring them does not reload or reset the page. */
+	const lastQueryRef = useRef({ search, type });
 	const itemsCountRef = useRef((cachedHomeState?.items?.length || 0));
+
+	useEffect(() => {
+		if (restored) return;
+		const cached = readCachedHomeState();
+		if (cached) {
+			memoryHomeState = cached;
+			itemsCountRef.current = cached.items.length;
+			lastQueryRef.current = { search: cached.search || '', type: cached.type || 'any' };
+			setItems(cached.items);
+			setTotal(cached.total || 0);
+			setPage(cached.page || 1);
+			setSearch(cached.search || '');
+			setType(cached.type || 'any');
+			setListing(cached.listing || 'any');
+			setCompanyFilter(cached.companyFilter || 'any');
+			setLoading(cached.items.length === 0);
+		}
+		setRestored(true);
+	}, []); // eslint-disable-line
 
 	useEffect(() => {
 		itemsCountRef.current = items.length;
@@ -123,6 +155,7 @@ export default function HomePage() {
 		if (shouldShowLoading) setLoading(true);
 		setError('');
 
+		lastQueryRef.current = { search: s, type: t };
 		try {
 			const { items, total } = await fetchHomeWithDedupe(p, s, t);
 			const nextHomeState: HomeState = {
@@ -147,12 +180,13 @@ export default function HomePage() {
 		}
 	}, [listing, companyFilter]);
 
-	useEffect(() => { load(page, search, type); }, [page]); // eslint-disable-line
 	useEffect(() => {
-		if (!hasMountedRef.current) {
-			hasMountedRef.current = true;
-			return;
-		}
+		if (restored) load(page, search, type);
+	}, [page, restored]); // eslint-disable-line
+	useEffect(() => {
+		if (!restored) return;
+		const last = lastQueryRef.current;
+		if (last.search === search && last.type === type) return;
 
 		const t = setTimeout(() => {
 			if (page === 1) {
@@ -183,12 +217,12 @@ export default function HomePage() {
 		sorted.forEach(n => { if (prev && n - prev > 1) pageNums.push('ellipsis'); pageNums.push(n); prev = n; });
 	}
 
-	const openDetail = (p: Property) => { cacheProperty(p); router.push(`/properties/${p.id}`); };
+	const openDetail = (p: Property) => { cacheProperty(p); router.push(propertyPath(p)); };
 
 	return (
-		<div style={{ minHeight: '100vh', background: '#FAFAF8' }}>
+		<div className="cd-page">
 			<Header />
-			<div style={{ maxWidth: 1180, margin: '0 auto', padding: '32px 28px 70px', animation: 'pf-fade .2s ease' }}>
+			<div className="cd-container" style={{ maxWidth: 1180, margin: '0 auto', padding: '32px 28px 70px', animation: 'pf-fade .2s ease' }}>
 				<div style={{ marginBottom: 22 }}>
 					<div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', color: '#E8650A', marginBottom: 6 }}>BROWSE ALL LISTINGS</div>
 					<h1 style={{ fontSize: 24, fontWeight: 800, color: '#0A0604', letterSpacing: '-.01em' }}>Properties across CRM Dost</h1>
@@ -200,10 +234,10 @@ export default function HomePage() {
 						<svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="#B8B4AE" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx={11} cy={11} r={7} /><path d="M21 21l-4-4" /></svg>
 						<input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by property, society or company" style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: 13.5, color: '#0A0604' }} />
 					</div>
-					<select value={type} onChange={e => setType(e.target.value)} style={selectStyle}>
+					<select value={type} onChange={e => { setType(e.target.value); track(EVENTS.FILTER_APPLIED, { filter: 'type', value: e.target.value }); }} style={selectStyle}>
 						<option value="any">Any type</option><option value="Residential">Residential</option><option value="Commercial">Commercial</option>
 					</select>
-					<select value={listing} onChange={e => setListing(e.target.value)} style={selectStyle}>
+					<select value={listing} onChange={e => { setListing(e.target.value); track(EVENTS.FILTER_APPLIED, { filter: 'listing', value: e.target.value }); }} style={selectStyle}>
 						<option value="any">Buy or Rent</option><option value="sale">For Sale</option><option value="rent">For Rent</option>
 					</select>
 					<select value={companyFilter} onChange={e => setCompanyFilter(e.target.value)} style={selectStyle}>
@@ -256,7 +290,7 @@ export default function HomePage() {
 					</>
 				)}
 			</div>
-			<div style={{ textAlign: 'center', padding: 24, color: '#B8B4AE', fontSize: 12, borderTop: '1px solid #F0EDE8' }}>Powered by CRM Dost</div>
+			<Footer />
 		</div>
 	);
 }

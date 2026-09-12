@@ -1,0 +1,12 @@
+{
+  "hosting": {
+    "target": "crm-dost-properties",
+    "source": ".",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "frameworksBackend": {
+      "region": "asia-south1",
+      "memory": "512MiB",
+      "maxInstances": 10
+    }
+  }
+}

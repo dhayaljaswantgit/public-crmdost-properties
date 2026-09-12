@@ -1,34 +1,35 @@
 import type { MetadataRoute } from 'next';
-import { fetchPublicProperties } from '../lib/api';
-
-const rawSiteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://crmdost.com';
-const siteUrl = rawSiteUrl.replace(/\/$/, '');
+import { companyPath, fetchPublicProperties, propertyPath } from '../lib/api';
+import { SITE_URL } from '../lib/seo';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base: MetadataRoute.Sitemap = [
     {
-      url: `${siteUrl}/`,
+      url: `${SITE_URL}/`,
       changeFrequency: 'hourly',
       priority: 1,
     },
   ];
 
   const data = await fetchPublicProperties({ page: 1, perPage: 100, search: '', type: 'any' });
-  const propertyUrls = (data.items || [])
-    .filter((property) => !!property?.id)
-    .map((property) => ({
-      url: `${siteUrl}/properties/${property.id}`,
-      changeFrequency: 'daily' as const,
-      priority: 0.8,
-    }));
+  const items = (data.items || []).filter((property) => !!property?.id);
 
-  const companyUrls = Array.from(
-    new Set((data.items || []).map((property) => property.companyId).filter(Boolean)),
-  ).map((companyId) => ({
-    url: `${siteUrl}/company/${companyId}`,
+  // Canonical addresses only (/{company}/{property}), never the legacy
+  // /properties/… and /company/… ones that redirect.
+  const propertyUrls = items.map((property) => ({
+    url: `${SITE_URL}${propertyPath(property)}`,
     changeFrequency: 'daily' as const,
-    priority: 0.7,
+    priority: 0.8,
   }));
+
+  const companies = new Map<string, string>(items.map((property) => [property.companyId, property.companySlug]));
+  const companyUrls = Array.from(companies.entries())
+    .filter(([companyId]) => !!companyId)
+    .map(([companyId, slug]) => ({
+      url: `${SITE_URL}${companyPath(slug, companyId)}`,
+      changeFrequency: 'daily' as const,
+      priority: 0.7,
+    }));
 
   return [...base, ...propertyUrls, ...companyUrls];
 }

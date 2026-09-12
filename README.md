@@ -1,22 +1,82 @@
-# CRM Dost — Public Properties (Next.js, live API)
+# CRM Dost — Public Properties
 
-Three routes wired to real REST endpoints on `test.apis.crmdost.com`-style API. `NEXT_PUBLIC_API_ENDPOINT` should be the API origin only, and `/v1` is appended in code:
+A Next.js public-facing property site that connects to the CRM Dost REST API and exposes a polished browsing experience for listings, companies, and property details.
 
-- `/` — All properties (canonical): search, type filter, **Buy/Rent filter**, **company filter**, windowed pagination → `GET /v1/property/public`
-- `/properties` — Legacy alias that redirects to `/`
-- `/company/[uid]` — Public company page (canonical): banner, stats, search/filters → `GET /v1/property/public/company/:uid`
-- `/properties/company/[uid]` — Legacy alias that redirects to `/company/[uid]`
-- `/properties/[uid]` — Property detail: photo lightbox (click any image, prev/next nav), price/beds/baths/area, agent card, enquiry form
+## What this app does
 
-## Run
+The site is wired to the public API endpoints and supports:
+
+- A searchable, filterable listings homepage at `/`
+- Company pages at `/company/[uid]`
+- Property detail pages at `/properties/[uid]`
+- Buy/rent filtering and company-based filtering
+- A photo lightbox, agent/contact actions, and enquiry/meeting forms
+- Rent-specific metadata such as rent frequency, security deposit, maintenance charges, and availability
+
+## Routes
+
+- `/` — Listings page: search, property type filter, buy/rent filter, company filter, and paginated results
+- `/[companySlug]` — Company page (banner, stats, search, filters). Canonical company URL.
+- `/[companySlug]/[propertySlug]` — Property detail. Canonical property URL; a property opened under the wrong company slug redirects to its own.
+- `/company/[id]`, `/properties/[slug]`, `/properties/company/[id]`, `/properties` — legacy links; permanent (308) redirects to the canonical URLs so links already shared keep working.
+
+Company slugs sit at the site root, so they must never equal a top-level route or `public/` file. The backend refuses those (`RESERVED_SLUGS` in `nodejs-server/src/utils/slug.ts`) — add any new top-level route or public file there too.
+
+## Link previews and SEO
+
+`app/[companySlug]/page.tsx` and `app/[companySlug]/[propertySlug]/page.tsx` are server components that set the title, description, canonical URL and Open Graph / Twitter tags (`lib/seo.ts`), then render the client pages in `components/`.
+
+- Company: `CRM Dost Properties | Public Listing | {company}` with the site description.
+- Property: `{property} | {company} | CRM Dost Properties`; description is the first ~155 characters of the listing's own description.
+- Share image (`opengraph-image.tsx` in each segment): the company's first banner image, or the property's first photo, cropped to 1200×630 on the fly with `sharp`, with the company logo on a white card. JPEG (~30–120 KB) because chat apps drop heavy previews. Falls back to the default banner.
+
+Metadata and share images re-fetch from the API at most every 5 minutes (`SEO_REVALIDATE`).
+
+## API configuration
+
+Set the API origin in the environment variable below. The app appends `/v1` internally, so this should be the base origin only.
+
+```bash
+NEXT_PUBLIC_API_URL=http://localhost:3004
+```
+
+Production safety: if no API origin env var is provided, the app falls back to `https://test.apis.crmdost.com` (to avoid accidental same-origin `/v1` calls on the public site domain).
+
+Example:
+
 ```bash
 npm install
 npm run dev
 ```
-Set `NEXT_PUBLIC_API_ENDPOINT` to the API origin, for example `http://localhost:3004`.
+
+## Build
+
+```bash
+npm run build
+```
+
+### Firebase Hosting
+
+`firebase.json` / `.firebaserc` target Hosting site `crm-dost-properties` (project `crm-dost-staging`, https://test.properties.crmdost.com). The site is server-rendered, so it deploys through Firebase's Next.js integration — static files on Hosting, the server part on Cloud Functions in `asia-south1` (`frameworksBackend`), Blaze plan required:
+
+```bash
+FIREBASE_CLI_EXPERIMENTS=webframeworks npx firebase-tools deploy --only hosting:crm-dost-properties --project crm-dost-staging
+```
+
+Docker image builds use `npm ci` for reproducible dependency installation and a `.dockerignore` that excludes local artifacts (`node_modules`, `.next`, `.env`, `.git`).
 
 ## Notes
-- `GET /property/:uid` requires auth we don't have on the public site, so **detail pages are populated from data already fetched** on the list/company pages (cached in `sessionStorage` by `lib/api.ts`'s `cacheProperty`/`getCachedProperty`) instead of calling that endpoint. Opening a detail URL directly (not via a card click) shows a friendly message pointing back to `/`.
-- Listing type now comes from backend `listing_type` (`sale` or `rent`) and supports rent metadata fields (`rent_frequency`, `security_deposit`, `maintenance_charges`, `available_from`) on the detail page.
-- `listingTag()` in `lib/api.ts` still includes a deterministic fallback only for legacy records that do not yet return `listing_type`.
-- ngrok free tunnels return an HTML interstitial to browser-like requests unless `ngrok-skip-browser-warning: true` is sent — already wired into every fetch call.
+
+- `sharp` is a runtime dependency (share images). `npm ci` installs the right native build per platform, including Alpine (musl) in Docker.
+- Listing type is derived from the backend `listing_type` field (`sale` or `rent`), with a deterministic fallback for older records that do not yet return it.
+- Requests include the `ngrok-skip-browser-warning` header so browser-like requests work correctly against ngrok tunnels.
+
+## Analytics
+
+PostHog is initialised by `components/AnalyticsProvider.tsx` (mounted in `app/layout.tsx`) when
+`NEXT_PUBLIC_POSTHOG_KEY` is set; without the key it no-ops. Event names are constants in
+`lib/analytics.ts` — never write an event string at a call site. Track property views, agent contact, enquiries and meeting requests. Session recording is disabled — the enquiry forms collect visitor PII.
+
+Use the **same PostHog project key as the CRM app** so the anonymous visitor id carries across
+subdomains via the root-domain cookie and cross-site funnels join up. See
+`docs/integrations/POSTHOG.md` for the platform-wide contract.
