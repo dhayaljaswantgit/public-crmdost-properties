@@ -11,7 +11,12 @@ The site is wired to the public API endpoints and supports:
 - Property detail pages at `/properties/[uid]`
 - Buy/rent filtering and company-based filtering
 - A photo lightbox, agent/contact actions, and enquiry/meeting forms
-- Rent-specific metadata such as rent frequency, security deposit, maintenance charges, and availability
+- Rent-specific metadata such as rent frequency, security deposit and maintenance charges
+- Listing details when the agent set them: furnishing, floor (0 = ground), parking spaces, year built and an availability date (sale and rent alike); the company page filters by furnishing
+
+## Listing status
+
+The API serves only listings whose status is `AVAILABLE` or `UNDER_OFFER` on every public read (home, company page, sitemap, detail, inquiry). An `UNDER_OFFER` listing carries an "Under offer" badge on cards and the detail page. A direct link to a listing that is `SOLD`, `RENTED` or `DRAFT` answers 410 from the API; `lookupPublicProperty` (`lib/api.ts`) turns that into the "This listing is no longer available" page with a link to the company's other listings, and the enquiry/meeting forms are never shown for it. The values live in `lib/property-fields.ts`, mirrored from the backend.
 
 ## Routes
 

@@ -46,3 +46,9 @@ input, select, textarea, button { font-family: inherit; }
   .cd-filter-search { flex-basis: 100% !important; min-width: 0 !important; }
   .cd-filter-select { flex: 1 1 0; min-width: 0; }
 }
+
+/* Property fact tiles: a long value (sector, typed kind) spans two columns so it
+   reads on one or two lines instead of one word per line. On a single-column
+   grid a span would overflow, so it is dropped there. */
+.pp-stat-tile--wide { grid-column: span 2; }
+@media (max-width: 339px) { .pp-stat-tile--wide { grid-column: auto; } }

@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import Header, { HEADER_HEIGHT } from './Header';
 import Footer from './Footer';
 import { SearchIcon } from './icons';
-import { fetchPublicCompany, shortMoney, listingTag, cacheProperty, propertyPath, Property, Company } from '../lib/api';
+import { fetchPublicCompany, formatMoney, rentSuffix, dominantCurrency, priceBuckets, listingTag, cacheProperty, propertyPath, Property, Company } from '../lib/api';
+import { FURNISHED_OPTIONS, isUnderOffer } from '../lib/property-fields';
 
 const selectStyle: React.CSSProperties = {
   border: '1px solid #E8E4DE',
@@ -55,6 +56,7 @@ export default function CompanyPage({ uid }: { uid: string }) {
   const [search, setSearch] = useState('');
   const [priceFilter, setPriceFilter] = useState('any');
   const [listing, setListing] = useState('any');
+  const [furnishedFilter, setFurnishedFilter] = useState('any');
   const [bannerIdx, setBannerIdx] = useState(0);
   const [bannerImages, setBannerImages] = useState<string[]>([]);
 
@@ -70,19 +72,19 @@ export default function CompanyPage({ uid }: { uid: string }) {
 
   useEffect(() => { load(); }, [load]);
 
+  // Prices, the range and the filter steps follow the listings' own currency.
+  const currency = dominantCurrency(properties);
+  const buckets = priceBuckets(currency);
   const matchPrice = (price: string, filter: string) => {
-    const n = parseInt(price || '0', 10);
-    if (filter === 'u50l') return n < 5000000;
-    if (filter === '50l-1cr') return n >= 5000000 && n < 10000000;
-    if (filter === '1cr-2cr') return n >= 10000000 && n < 20000000;
-    if (filter === '2crplus') return n >= 20000000;
-    return true;
+    const bucket = buckets.find((b) => b.value === filter) || buckets[0];
+    return bucket.match(parseInt(price || '0', 10) || 0);
   };
   const filtered = properties.filter(p => {
     if (search && !`${p.name} ${p.society} ${p.addr1}`.toLowerCase().includes(search.toLowerCase())) return false;
     if (!matchPrice(p.price, priceFilter)) return false;
     const lt = listingTag(p.id, p.listingType);
     if (listing !== 'any' && (listing === 'rent') !== lt.isRent) return false;
+    if (furnishedFilter !== 'any' && (p.furnished || '') !== furnishedFilter) return false;
     return true;
   });
   /*
@@ -97,8 +99,8 @@ export default function CompanyPage({ uid }: { uid: string }) {
     const t = setInterval(() => setBannerIdx(i => (i + 1) % bannerImgs.length), 4500);
     return () => clearInterval(t);
   }, [bannerImgs.length]);
-  const prices = properties.map(p => parseInt(p.price, 10)).filter(Boolean);
-  const priceRange = prices.length ? (Math.min(...prices) === Math.max(...prices) ? shortMoney(Math.min(...prices)) : `${shortMoney(Math.min(...prices))} – ${shortMoney(Math.max(...prices))}`) : '—';
+  const prices = properties.filter(p => p.currency === currency).map(p => parseInt(p.price, 10)).filter(Boolean);
+  const priceRange = prices.length ? (Math.min(...prices) === Math.max(...prices) ? formatMoney(Math.min(...prices), currency) : `${formatMoney(Math.min(...prices), currency)} – ${formatMoney(Math.max(...prices), currency)}`) : '—';
 
   const openDetail = (p: Property) => { cacheProperty(p); router.push(propertyPath(p)); };
 
@@ -165,10 +167,14 @@ export default function CompanyPage({ uid }: { uid: string }) {
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by property name or address" aria-label="Search listings" style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 13.5, minWidth: 0 }} />
             </label>
             <select value={priceFilter} onChange={e => setPriceFilter(e.target.value)} aria-label="Price" className="cd-filter-select" style={{ ...selectStyle, minHeight: 44 }}>
-              <option value="any">Any price</option><option value="u50l">Under ₹50 L</option><option value="50l-1cr">₹50L – ₹1 Cr</option><option value="1cr-2cr">₹1 Cr – ₹2 Cr</option><option value="2crplus">₹2 Cr+</option>
+              {buckets.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
             </select>
             <select value={listing} onChange={e => setListing(e.target.value)} aria-label="Buy or rent" className="cd-filter-select" style={{ ...selectStyle, minHeight: 44 }}>
               <option value="any">Buy or Rent</option><option value="sale">For Sale</option><option value="rent">For Rent</option>
+            </select>
+            <select value={furnishedFilter} onChange={e => setFurnishedFilter(e.target.value)} aria-label="Furnishing" className="cd-filter-select" style={{ ...selectStyle, minHeight: 44 }}>
+              <option value="any">Any furnishing</option>
+              {FURNISHED_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
           </div>
         </div>
@@ -186,13 +192,16 @@ export default function CompanyPage({ uid }: { uid: string }) {
                 <div key={p.id} style={{ background: '#fff', border: '1px solid #EAE6E0', borderRadius: 16, overflow: 'hidden', boxShadow: '0 4px 16px rgba(0,0,0,.05)' }}>
                   <div style={{ position: 'relative', height: 170, background: p.images[0] ? `url(${p.images[0]}) center/cover` : '#F0EDE8' }}>
                     <span style={{ position: 'absolute', top: 10, left: 10, background: '#EAF3DE', color: '#3B6D11', fontSize: 11, fontWeight: 700, borderRadius: 20, padding: '4px 11px' }}>Public</span>
-                    <span style={{ position: 'absolute', top: 10, right: 10, background: lt.isRent ? '#E6F1FB' : '#EAF3DE', color: lt.isRent ? '#185FA5' : '#3B6D11', fontSize: 11, fontWeight: 700, borderRadius: 20, padding: '4px 11px' }}>{lt.tag}</span>
+                    <span style={{ position: 'absolute', top: 10, right: 10, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                      <span style={{ background: lt.isRent ? '#E6F1FB' : '#EAF3DE', color: lt.isRent ? '#185FA5' : '#3B6D11', fontSize: 11, fontWeight: 700, borderRadius: 20, padding: '4px 11px' }}>{lt.tag}</span>
+                      {isUnderOffer(p.status) ? <span style={{ background: '#FDF0D5', color: '#8A5A00', fontSize: 11, fontWeight: 700, borderRadius: 20, padding: '4px 11px' }}>Under offer</span> : null}
+                    </span>
                     <button onClick={() => openDetail(p)} style={{ position: 'absolute', bottom: 10, right: 10, background: 'rgba(255,255,255,.95)', border: 'none', borderRadius: 9, padding: '7px 13px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>View</button>
                   </div>
                   <div style={{ padding: 16 }}>
                     <div style={{ fontSize: 16, fontWeight: 700 }}>{p.name}</div>
                     <div style={{ fontSize: 12.5, color: '#8A8480', marginTop: 3 }}>{[p.society, p.sector && `Sector ${p.sector}`].filter(Boolean).join(' · ') || p.addr1}</div>
-                    <div style={{ fontSize: 18, fontWeight: 800, color: '#E8650A', marginTop: 9 }}>{shortMoney(p.price)}{lt.isRent ? '/mo' : ''}</div>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: '#E8650A', marginTop: 9 }}>{formatMoney(p.price, p.currency)}{rentSuffix(p.listingType, p.rentFrequency)}</div>
                     <StatIcons p={p} />
                   </div>
                 </div>

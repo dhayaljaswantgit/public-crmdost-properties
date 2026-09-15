@@ -6,28 +6,37 @@ import Link from 'next/link';
 import Header from './Header';
 import { hasInAppHistory } from '../lib/in-app-history';
 import Footer from './Footer';
-import { API_V1_BASE, shortMoney, listingTag, getCachedProperty, cacheProperty, fetchPublicProperty, forgetCachedProperty, toBrand, companyPath, Property } from '../lib/api';
+import { API_V1_BASE, formatMoney, rentSuffix, listingTag, getCachedProperty, cacheProperty, lookupPublicProperty, forgetCachedProperty, toBrand, companyPath, Property } from '../lib/api';
+import { formatAvailableFrom, formatFloor, formatParking, furnishedLabel, isUnderOffer } from '../lib/property-fields';
 import { track, EVENTS } from '../lib/analytics';
 import {
   ArrowLeftIcon,
+  BanknoteIcon,
   BathIcon,
   BedIcon,
+  BuildingIcon,
   CalendarCheckIcon,
   CalendarIcon,
+  CarIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   CircleAlertIcon,
   CircleCheckIcon,
   FileTextIcon,
+  HammerIcon,
   HomeSearchIcon,
   ImagesIcon,
+  LandPlotIcon,
+  LayersIcon,
   MapPinIcon,
+  MapPinnedIcon,
   MessageCircleIcon,
   PhoneIcon,
   RepeatIcon,
   RulerIcon,
   RupeeIcon,
   SendIcon,
+  SofaIcon,
   UserRoundIcon,
   ShieldCheckIcon,
   VideoIcon,
@@ -42,15 +51,31 @@ const BRAND = '#E8650A';
 const backLinkStyle: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, background: '#F5F2EE', border: 'none', borderRadius: 9, padding: '8px 14px', minHeight: 36, fontSize: 12.5, fontWeight: 700, color: '#5A5048', cursor: 'pointer', marginBottom: 18 };
 
 /** A labelled fact with its icon in a tinted bubble. */
+/** Values longer than this ("Golf Course Extension Road") get a double-width tile. */
+const WIDE_TILE_FROM = 15;
+
 function StatTile({ icon: Icon, label, value, accent = false }: { icon: IconType; label: string; value: ReactNode; accent?: boolean }) {
+  // A tile is sized for a number or two words. A sector name or a typed
+  // property kind wrapped one word per line and stretched the whole row, so
+  // long text takes two columns and is clamped to two lines (full text on hover).
+  const text = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+  const wide = text.length >= WIDE_TILE_FROM;
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 11, background: '#fff', border: '1px solid #EAE6E0', borderRadius: 14, padding: '12px 13px', minWidth: 0 }}>
+    <div
+      className={wide ? 'pp-stat-tile pp-stat-tile--wide' : 'pp-stat-tile'}
+      style={{ display: 'flex', alignItems: 'center', gap: 11, background: '#fff', border: '1px solid #EAE6E0', borderRadius: 14, padding: '12px 13px', minWidth: 0 }}
+    >
       <span style={{ width: 36, height: 36, borderRadius: 10, background: '#FFF1E6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
         <Icon size={18} color={BRAND} />
       </span>
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.04em', color: '#A8A29B', textTransform: 'uppercase' }}>{label}</div>
-        <div style={{ fontSize: 15, fontWeight: 800, color: accent ? BRAND : '#1A120C', marginTop: 2, overflowWrap: 'anywhere' }}>{value}</div>
+        <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.04em', color: '#A8A29B', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
+        <div
+          title={text || undefined}
+          style={{ fontSize: 15, fontWeight: 800, color: accent ? BRAND : '#1A120C', marginTop: 2, lineHeight: 1.3, overflowWrap: 'anywhere', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
+        >
+          {value}
+        </div>
       </div>
     </div>
   );
@@ -84,6 +109,8 @@ export default function PropertyDetailPage({ uid }: { uid: string }) {
   const router = useRouter();
   const [property, setProperty] = useState<Property | null>(null);
   const [notFound, setNotFound] = useState(false);
+  /** Set when the listing was public but is sold, rented or withdrawn (API 410). */
+  const [unavailable, setUnavailable] = useState<{ id: string; slug: string; name: string } | null>(null);
   const [enquiry, setEnquiry] = useState({ name: '', phone: '', message: '' });
   const [sent, setSent] = useState(false);
   const [enquirySubmitting, setEnquirySubmitting] = useState(false);
@@ -121,22 +148,27 @@ export default function PropertyDetailPage({ uid }: { uid: string }) {
     const cached = getCachedProperty(uid);
     if (cached) setProperty(cached);
 
-    fetchPublicProperty(uid)
-      .then((fresh) => {
+    lookupPublicProperty(uid)
+      .then((lookup) => {
         if (cancelled) return;
-        if (!fresh) {
-          // Unpublished or removed: never keep showing the stale copy.
+        if (lookup.state !== 'found') {
+          // Unpublished, removed or off the market: never keep showing the
+          // stale copy. A sold/rented/draft listing says so and points at the
+          // company's other listings rather than 404ing silently.
           forgetCachedProperty(uid);
           setProperty(null);
-          setNotFound(true);
-          track(EVENTS.DIRECT_LANDING_FAILED, { property_uid: uid });
+          if (lookup.state === 'unavailable') setUnavailable(lookup.company);
+          else setNotFound(true);
+          track(EVENTS.DIRECT_LANDING_FAILED, { property_uid: uid, reason: lookup.state });
           return;
         }
+        const fresh = lookup.property;
         cacheProperty(fresh);
         setProperty(fresh);
         track(EVENTS.PROPERTY_VIEWED, {
           property_uid: uid,
           listing_type: fresh.listingType || undefined,
+          status: fresh.status || undefined,
         });
       })
       .catch(() => {
@@ -179,6 +211,27 @@ export default function PropertyDetailPage({ uid }: { uid: string }) {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [imageCount, lightboxOpen]);
 
+  if (unavailable) {
+    const companyHref = unavailable.slug || unavailable.id ? companyPath(unavailable.slug, unavailable.id) : '/';
+    return (
+      <div className="cd-page">
+        <Header />
+        <div style={{ textAlign: 'center', padding: '80px 20px', color: '#5A5048' }}>
+          <span style={{ width: 56, height: 56, borderRadius: 16, background: '#FFF1E6', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+            <HomeSearchIcon size={26} color={BRAND} />
+          </span>
+          <h1 style={{ fontSize: 18, fontWeight: 800, color: '#0A0604' }}>This listing is no longer available</h1>
+          <div style={{ fontSize: 14, marginTop: 6 }}>It has been sold, rented or taken off the market{unavailable.name ? ` by ${unavailable.name}` : ''}.</div>
+          <div style={{ marginTop: 18 }}>
+            <Link href={companyHref} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 44, padding: '0 18px', background: BRAND, color: '#fff', borderRadius: 11, fontSize: 14, fontWeight: 700 }}>
+              <ArrowLeftIcon size={15} /> {unavailable.name ? `See ${unavailable.name}'s other listings` : 'Browse all properties'}
+            </Link>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
   if (notFound) return (
     <div className="cd-page">
       <Header />
@@ -198,8 +251,21 @@ export default function PropertyDetailPage({ uid }: { uid: string }) {
   const hero = images[0];
   const sideImgs = images.slice(1, 3);
   const extra = images.length - 3;
-  const fullAddr = [property.addr1, property.society && `Society ${property.society}`, property.sector && `Sector ${property.sector}`].filter(Boolean).join(', ');
+  // Every address line the agent typed: line 2 used to be dropped here.
+  const fullAddr = [property.addr1, property.addr2, property.society && `Society ${property.society}`, property.sector && `Sector ${property.sector}`].filter(Boolean).join(', ');
   const lt = listingTag(property.id, property.listingType);
+  const typeLabel = [property.type, property.subType].filter(Boolean).join(' · ');
+  const societyArea = property.societyArea ? formatArea(property.societyArea, property.societyAreaUnit) : '';
+  // Optional details (CRMDOST-352), each shown only when the agent set it.
+  // "Available from" applies to sale and rent listings alike.
+  const furnished = furnishedLabel(property.furnished);
+  const floor = formatFloor(property.floorNumber ?? null);
+  const parking = formatParking(property.parkingSpaces ?? null);
+  const yearBuilt = property.yearBuilt ? String(property.yearBuilt) : '';
+  const availableFrom = formatAvailableFrom(property.availableFrom);
+  const underOffer = isUnderOffer(property.status);
+  const showExtraFacts = !!(typeLabel || property.sector || societyArea || furnished || floor || parking || yearBuilt || availableFrom);
+  const PriceIcon = property.currency === 'INR' ? RupeeIcon : BanknoteIcon;
   const now = new Date();
   const minDate = toDateInputValue(now);
   const minTime = meeting.date === minDate ? toTimeInputValue(now) : undefined;
@@ -359,20 +425,37 @@ export default function PropertyDetailPage({ uid }: { uid: string }) {
 
         <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
           <div style={{ flex: '2 1 480px', minWidth: 320 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 9, marginBottom: 4 }}>
               <h1 style={{ fontSize: 26, fontWeight: 800, color: '#0A0604' }}>{property.name}</h1>
               <span style={{ background: lt.isRent ? '#E6F1FB' : '#EAF3DE', color: lt.isRent ? '#185FA5' : '#3B6D11', fontSize: 12, fontWeight: 700, borderRadius: 20, padding: '4px 12px' }}>{lt.tag}</span>
+              {underOffer ? (
+                <span title="An offer has been accepted; the listing stays visible until it completes" style={{ background: '#FDF0D5', color: '#8A5A00', fontSize: 12, fontWeight: 700, borderRadius: 20, padding: '4px 12px' }}>Under offer</span>
+              ) : null}
             </div>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 14, color: '#8A8480', marginBottom: 18 }}>
               <MapPinIcon size={16} color="#B0A89F" style={{ marginTop: 1 }} />
               <span>{fullAddr || '—'}</span>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 12, marginBottom: 24 }}>
-              <StatTile icon={RupeeIcon} label="Price" value={`${shortMoney(property.price)}${lt.isRent ? '/mo' : ''}`} accent />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 12, marginBottom: showExtraFacts ? 12 : 24 }}>
+              <StatTile icon={PriceIcon} label="Price" value={`${formatMoney(property.price, property.currency)}${rentSuffix(property.listingType, property.rentFrequency)}`} accent />
               <StatTile icon={BedIcon} label="Bedrooms" value={property.beds || '—'} />
               <StatTile icon={BathIcon} label="Bathrooms" value={property.baths || '—'} />
               <StatTile icon={RulerIcon} label="Area" value={formatArea(property.area, property.areaUnit)} />
             </div>
+            {/* Type, sub type, sector and society area are captured in the CRM
+                but were never shown to visitors. */}
+            {showExtraFacts ? (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 12, marginBottom: 24 }}>
+                {typeLabel ? <StatTile icon={BuildingIcon} label="Property type" value={typeLabel} /> : null}
+                {property.sector ? <StatTile icon={MapPinnedIcon} label="Sector" value={property.sector} /> : null}
+                {societyArea ? <StatTile icon={LandPlotIcon} label="Society area" value={societyArea} /> : null}
+                {furnished ? <StatTile icon={SofaIcon} label="Furnishing" value={furnished} /> : null}
+                {floor ? <StatTile icon={LayersIcon} label="Floor" value={floor} /> : null}
+                {parking ? <StatTile icon={CarIcon} label="Parking" value={parking} /> : null}
+                {yearBuilt ? <StatTile icon={HammerIcon} label="Year built" value={yearBuilt} /> : null}
+                {availableFrom ? <StatTile icon={CalendarIcon} label="Available from" value={availableFrom} /> : null}
+              </div>
+            ) : null}
 
             {lt.isRent ? (
               <div style={{ marginBottom: 24 }}>
@@ -381,7 +464,6 @@ export default function PropertyDetailPage({ uid }: { uid: string }) {
                   <StatTile icon={RepeatIcon} label="Rent frequency" value={property.rentFrequency ? property.rentFrequency.charAt(0).toUpperCase() + property.rentFrequency.slice(1) : '—'} />
                   <StatTile icon={ShieldCheckIcon} label="Security deposit" value={property.securityDeposit || '—'} />
                   <StatTile icon={WrenchIcon} label="Maintenance" value={property.maintenanceCharges || '—'} />
-                  <StatTile icon={CalendarIcon} label="Available from" value={property.availableFrom || '—'} />
                 </div>
               </div>
             ) : null}

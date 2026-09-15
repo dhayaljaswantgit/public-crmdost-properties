@@ -1,3 +1,5 @@
+import { normalizeFurnished, normalizeStatus, toWholeNumber, type Furnished, type PropertyStatus } from './property-fields';
+
 const PROD_API_FALLBACK = 'https://test.apis.crmdost.com';
 const DEV_API_FALLBACK = 'http://localhost:3004';
 
@@ -49,14 +51,38 @@ export type Property = {
   /** Optional: copies cached before branding existed do not carry it. */
   brand?: CompanyBrand;
   price: string; currency: string; type: string; beds: string; baths: string; area: string; areaUnit: string;
+  /** Optional: copies cached before these fields were shown do not carry them. */
+  subType?: string;
+  societyArea?: string;
+  societyAreaUnit?: string;
   listingType: 'sale' | 'rent';
   rentFrequency: 'monthly' | 'quarterly' | 'yearly' | '';
   securityDeposit: string;
   maintenanceCharges: string;
+  /** `YYYY-MM-DD`; applies to sale and rent listings alike. */
   availableFrom: string;
+  /**
+   * Optional (copies cached before CRMDOST-352 do not carry them). The API
+   * only ever serves AVAILABLE and UNDER_OFFER listings here.
+   */
+  status?: PropertyStatus;
+  furnished?: Furnished | '';
+  floorNumber?: number | null;
+  parkingSpaces?: number | null;
+  yearBuilt?: number | null;
   society: string; sector: string; addr1: string; addr2: string; description: string; images: string[];
   agentName: string; agentPhone: string; allowContact: boolean; allowMeeting: boolean;
 };
+
+/**
+ * What a public property address resolves to: the listing, a listing that has
+ * left the market (the API answers 410 with the company to fall back to), or
+ * nothing at all.
+ */
+export type PropertyLookup =
+  | { state: 'found'; property: Property }
+  | { state: 'unavailable'; company: { id: string; slug: string; name: string } }
+  | { state: 'missing' };
 
 export type Company = { id: string; slug: string; name: string; initials: string; address: string; brand: CompanyBrand };
 
@@ -94,14 +120,23 @@ function mapProperty(raw: any): Property {
     companySlug: String(raw.companySlug || ''),
     brand: toBrand(raw.companyName, raw.companyLogo, raw.companyBrandColor, raw.companyDisplayMode),
     name: raw.name || 'Untitled property',
-    price: String(raw.price || 0), currency: raw.currency_code || 'INR',
-    type: raw.property_type_name || '', beds: String(raw.beds || ''), baths: String(raw.baths || ''),
+    price: String(raw.price || 0), currency: String(raw.currency_code || 'INR').toUpperCase(),
+    type: raw.property_type_name || '', subType: raw.property_sub_type_name || '',
+    beds: String(raw.beds || ''), baths: String(raw.baths || ''),
     listingType,
     rentFrequency,
     securityDeposit: String(raw.security_deposit || ''),
     maintenanceCharges: String(raw.maintenance_charges || ''),
-    availableFrom: String(raw.available_from || ''),
-    area: String(raw.sqft || ''), areaUnit: String(raw.area_unit || ''), society: raw.society_name || '', sector: raw.sector || '',
+    // The API serialises the DATE column as an ISO datetime; keep the day only.
+    availableFrom: String(raw.available_from || '').slice(0, 10),
+    status: normalizeStatus(raw.status),
+    furnished: normalizeFurnished(raw.furnished),
+    floorNumber: toWholeNumber(raw.floor_number),
+    parkingSpaces: toWholeNumber(raw.parking_spaces),
+    yearBuilt: toWholeNumber(raw.year_built),
+    area: String(raw.sqft || ''), areaUnit: String(raw.area_unit || ''),
+    societyArea: String(raw.society_area || ''), societyAreaUnit: String(raw.society_area_unit || ''),
+    society: raw.society_name || '', sector: raw.sector || '',
     addr1: raw.address || '', addr2: raw.address2nd || '', description: raw.description || '',
     images: Array.isArray(raw.images) ? raw.images : [],
     agentName, agentPhone, allowContact: !!raw.allow_contact, allowMeeting: !!raw.allow_meeting
@@ -128,12 +163,68 @@ export function listingTag(id: string, listingType?: string): { tag: 'For Sale' 
   return { tag: isRent ? 'For Rent' : 'For Sale', isRent };
 }
 
-export function shortMoney(v: string | number): string {
-  const n = parseInt(String(v || '0'), 10);
-  if (!n) return '—';
-  if (n >= 10000000) return '₹' + (n / 10000000).toFixed(2).replace(/\.?0+$/, '') + ' Cr';
-  if (n >= 100000) return '₹' + (n / 100000).toFixed(2).replace(/\.?0+$/, '') + ' L';
-  return '₹' + n.toLocaleString('en-IN');
+/**
+ * A price in the listing's own currency. Rupees use lakh/crore; every other
+ * currency is compacted by Intl in its own symbol ("$450K", "€1.2M"). Every
+ * price used to be printed as rupees whatever currency the agent had chosen.
+ */
+export function formatMoney(v: string | number, currency = 'INR'): string {
+  const n = Number(String(v ?? '').replace(/[^\d.]/g, ''));
+  if (!Number.isFinite(n) || n <= 0) return '—';
+  const code = String(currency || 'INR').toUpperCase();
+  if (code === 'INR') {
+    if (n >= 10000000) return '₹' + (n / 10000000).toFixed(2).replace(/\.?0+$/, '') + ' Cr';
+    if (n >= 100000) return '₹' + (n / 100000).toFixed(2).replace(/\.?0+$/, '') + ' L';
+    return '₹' + Math.round(n).toLocaleString('en-IN');
+  }
+  try {
+    return new Intl.NumberFormat('en', {
+      style: 'currency',
+      currency: code,
+      notation: n >= 10000 ? 'compact' : 'standard',
+      compactDisplay: 'short',
+      maximumFractionDigits: n >= 10000 ? 2 : 0,
+    }).format(n);
+  } catch {
+    return `${code} ${Math.round(n).toLocaleString('en')}`;
+  }
+}
+
+/** "/mo", "/qtr" or "/yr" after a rent; nothing for a sale. */
+export function rentSuffix(listingType: string | undefined, rentFrequency: string | undefined): string {
+  if (String(listingType || '').toLowerCase() !== 'rent') return '';
+  const freq = String(rentFrequency || 'monthly').toLowerCase();
+  return freq === 'yearly' ? '/yr' : freq === 'quarterly' ? '/qtr' : '/mo';
+}
+
+/** The currency most of a company's listings use, for its price range and filter. */
+export function dominantCurrency(list: Array<Pick<Property, 'currency'>>): string {
+  const counts = new Map<string, number>();
+  for (const item of list) {
+    const code = String(item.currency || 'INR').toUpperCase();
+    counts.set(code, (counts.get(code) || 0) + 1);
+  }
+  let best = 'INR';
+  let bestCount = 0;
+  counts.forEach((count, code) => { if (count > bestCount) { best = code; bestCount = count; } });
+  return best;
+}
+
+export type PriceBucket = { value: string; label: string; match: (n: number) => boolean };
+
+/**
+ * Price filter steps in the listings' currency: 50 L / 1 Cr / 2 Cr for
+ * rupees, 250K / 500K / 1M for everything else.
+ */
+export function priceBuckets(currency: string): PriceBucket[] {
+  const [a, b, c] = currency === 'INR' ? [5000000, 10000000, 20000000] : [250000, 500000, 1000000];
+  return [
+    { value: 'any', label: 'Any price', match: () => true },
+    { value: 'b1', label: `Under ${formatMoney(a, currency)}`, match: (n) => n < a },
+    { value: 'b2', label: `${formatMoney(a, currency)} – ${formatMoney(b, currency)}`, match: (n) => n >= a && n < b },
+    { value: 'b3', label: `${formatMoney(b, currency)} – ${formatMoney(c, currency)}`, match: (n) => n >= b && n < c },
+    { value: 'b4', label: `${formatMoney(c, currency)}+`, match: (n) => n >= c },
+  ];
 }
 
 export async function fetchPublicProperties(params: { page?: number; perPage?: number; search?: string; type?: string }) {
@@ -165,19 +256,35 @@ export async function fetchPublicCompany(uid: string, opts?: FetchFreshness) {
 }
 
 /**
- * One published property, always fresh from the API.
+ * One published property address, always fresh from the API.
  *
- * Returns null when it doesn't exist or isn't public (the API answers 4xx for
- * both, so an unpublished listing can never be shown from a stale copy).
- * Throws on a network/server failure so the caller can fall back to a cached
- * copy rather than claim the property is gone.
+ * 410 means the listing was public but is sold, rented or a draft now: the
+ * API sends the company so the page can point at its other listings. Any
+ * other 4xx (missing, never published) is "missing", so an unpublished
+ * listing can never be shown from a stale copy. Throws on a network/server
+ * failure so the caller can fall back to a cached copy rather than claim the
+ * property is gone.
  */
-export async function fetchPublicProperty(uid: string, opts?: FetchFreshness): Promise<Property | null> {
+export async function lookupPublicProperty(uid: string, opts?: FetchFreshness): Promise<PropertyLookup> {
   const res = await fetch(`${API_V1_BASE}/property/${encodeURIComponent(uid)}`, freshness(opts));
-  if (res.status >= 400 && res.status < 500) return null;
+  if (res.status === 410) {
+    const json = await res.json().catch(() => ({}));
+    const data = json?.data || {};
+    return {
+      state: 'unavailable',
+      company: { id: String(data.companyId ?? ''), slug: String(data.companySlug || ''), name: String(data.companyName || '') },
+    };
+  }
+  if (res.status >= 400 && res.status < 500) return { state: 'missing' };
   if (!res.ok) throw new Error('Failed to load property (' + res.status + ')');
   const json = await res.json();
-  return json?.data ? mapProperty(json.data) : null;
+  return json?.data ? { state: 'found', property: mapProperty(json.data) } : { state: 'missing' };
+}
+
+/** The listing at a public address, or null when there is nothing to show (missing or off the market). */
+export async function fetchPublicProperty(uid: string, opts?: FetchFreshness): Promise<Property | null> {
+  const lookup = await lookupPublicProperty(uid, opts);
+  return lookup.state === 'found' ? lookup.property : null;
 }
 
 // A copy of each property seen on the list/company pages, so opening one from

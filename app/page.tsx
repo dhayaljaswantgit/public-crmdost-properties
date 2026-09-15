@@ -4,7 +4,8 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import { fetchPublicProperties, shortMoney, listingTag, cacheProperty, propertyPath, Property } from '../lib/api';
+import { fetchPublicProperties, formatMoney, rentSuffix, listingTag, cacheProperty, propertyPath, Property } from '../lib/api';
+import { isUnderOffer } from '../lib/property-fields';
 import { track, EVENTS } from '../lib/analytics';
 
 const PER_PAGE = 12;
@@ -265,12 +266,15 @@ export default function HomePage() {
 									<div key={p.id} onClick={() => openDetail(p)} style={{ background: '#fff', border: '1px solid #EAE6E0', borderRadius: 16, overflow: 'hidden', boxShadow: '0 4px 16px rgba(0,0,0,.05)', cursor: 'pointer' }}>
 										<div style={{ position: 'relative', height: 160, background: p.images[0] ? `url(${p.images[0]}) center/cover` : '#F0EDE8' }}>
 											<span style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(10,6,4,.6)', color: '#fff', fontSize: 10.5, fontWeight: 700, borderRadius: 20, padding: '4px 10px' }}>{p.companyName || '—'}</span>
-											<span style={{ position: 'absolute', top: 10, right: 10, background: lt.isRent ? '#E6F1FB' : '#EAF3DE', color: lt.isRent ? '#185FA5' : '#3B6D11', fontSize: 10.5, fontWeight: 700, borderRadius: 20, padding: '4px 10px' }}>{lt.tag}</span>
+											<span style={{ position: 'absolute', top: 10, right: 10, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+												<span style={{ background: lt.isRent ? '#E6F1FB' : '#EAF3DE', color: lt.isRent ? '#185FA5' : '#3B6D11', fontSize: 10.5, fontWeight: 700, borderRadius: 20, padding: '4px 10px' }}>{lt.tag}</span>
+												{isUnderOffer(p.status) ? <span style={{ background: '#FDF0D5', color: '#8A5A00', fontSize: 10.5, fontWeight: 700, borderRadius: 20, padding: '4px 10px' }}>Under offer</span> : null}
+											</span>
 										</div>
 										<div style={{ padding: 15 }}>
 											<div style={{ fontSize: 15, fontWeight: 700, color: '#0A0604' }}>{p.name}</div>
 											<div style={{ fontSize: 12, color: '#8A8480', marginTop: 3 }}>{[p.society, p.sector && `Sector ${p.sector}`].filter(Boolean).join(' · ') || p.addr1 || '—'}</div>
-											<div style={{ fontSize: 17, fontWeight: 800, color: '#E8650A', marginTop: 8 }}>{shortMoney(p.price)}{lt.isRent ? '/mo' : ''}</div>
+											<div style={{ fontSize: 17, fontWeight: 800, color: '#E8650A', marginTop: 8 }}>{formatMoney(p.price, p.currency)}{rentSuffix(p.listingType, p.rentFrequency)}</div>
 											<StatIcons p={p} />
 										</div>
 									</div>

@@ -61,6 +61,44 @@ export const RupeeIcon = svg(
   </>,
 );
 
+/** Price in any currency; the rupee glyph is only right for INR. */
+export const BanknoteIcon = svg(
+  <>
+    <rect width="20" height="12" x="2" y="6" rx="2" />
+    <circle cx="12" cy="12" r="2" />
+    <path d="M6 12h.01M18 12h.01" />
+  </>,
+);
+
+export const BuildingIcon = svg(
+  <>
+    <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z" />
+    <path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2" />
+    <path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2" />
+    <path d="M10 6h4" />
+    <path d="M10 10h4" />
+    <path d="M10 14h4" />
+    <path d="M10 18h4" />
+  </>,
+);
+
+export const LandPlotIcon = svg(
+  <>
+    <path d="m12 8 6-3-6-3v10" />
+    <path d="m8 11.99-5.5 3.14a1 1 0 0 0 0 1.74l8.5 4.86a2 2 0 0 0 2 0l8.5-4.86a1 1 0 0 0 0-1.74L16 12" />
+    <path d="m6.49 12.85 11.02 6.3" />
+    <path d="M17.51 12.85 6.5 19.15" />
+  </>,
+);
+
+export const MapPinnedIcon = svg(
+  <>
+    <path d="M18 8c0 3.613-3.869 7.429-5.393 8.795a1 1 0 0 1-1.214 0C9.87 15.429 6 11.613 6 8a6 6 0 0 1 12 0" />
+    <circle cx="12" cy="8" r="2" />
+    <path d="M8.714 14h-3.71a1 1 0 0 0-.948.683l-2.004 6A1 1 0 0 0 3 22h18a1 1 0 0 0 .948-1.316l-2-6a1 1 0 0 0-.949-.684h-3.712" />
+  </>,
+);
+
 export const BedIcon = svg(
   <>
     <path d="M2 20v-8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8" />
@@ -118,6 +156,39 @@ export const ShieldCheckIcon = svg(
 
 export const WrenchIcon = svg(
   <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />,
+);
+
+export const SofaIcon = svg(
+  <>
+    <path d="M20 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v3" />
+    <path d="M2 16a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5a2 2 0 0 0-4 0v1.5a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5V11a2 2 0 0 0-4 0z" />
+    <path d="M4 18v2M20 18v2M12 4v9" />
+  </>,
+);
+
+export const LayersIcon = svg(
+  <>
+    <path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z" />
+    <path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65" />
+    <path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65" />
+  </>,
+);
+
+export const CarIcon = svg(
+  <>
+    <path d="m21 8-2 2-1.5-3.7A2 2 0 0 0 15.646 5H8.4a2 2 0 0 0-1.903 1.257L5 10 3 8" />
+    <path d="M7 14h.01M17 14h.01" />
+    <rect width="18" height="8" x="3" y="10" rx="2" />
+    <path d="M5 18v2M19 18v2" />
+  </>,
+);
+
+export const HammerIcon = svg(
+  <>
+    <path d="m15 12-8.373 8.373a1 1 0 1 1-3-3L12 9" />
+    <path d="m18 15 4-4" />
+    <path d="m21.5 11.5-1.914-1.914A2 2 0 0 1 19 8.172V7l-2.26-2.26a6 6 0 0 0-4.202-1.756L9 2.96l.92.82A6.18 6.18 0 0 1 12 8.4V10l2 2h1.172a2 2 0 0 1 1.414.586L18.5 14.5" />
+  </>,
 );
 
 export const CalendarIcon = svg(calendarFrame);
