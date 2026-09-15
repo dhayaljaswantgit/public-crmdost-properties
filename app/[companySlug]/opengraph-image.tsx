@@ -5,11 +5,13 @@ import { renderShareImage } from '../../lib/share-image';
 export const size = SHARE_IMAGE;
 export const contentType = 'image/jpeg';
 export const alt = 'Company property listings on CRM Dost Properties';
-export const revalidate = SEO_REVALIDATE;
+// Segment config must be a literal (Next rejects an imported identifier here); equals SEO_REVALIDATE.
+export const revalidate = 300;
 
 /** The company's first banner image (else the default banner), with its logo. */
-export default async function Image({ params }: { params: { companySlug: string } }) {
-  const data = await fetchPublicCompany(params.companySlug, { revalidate: SEO_REVALIDATE }).catch(() => null);
+export default async function Image({ params }: { params: Promise<{ companySlug: string }> }) {
+  const { companySlug } = await params;
+  const data = await fetchPublicCompany(companySlug, { revalidate: SEO_REVALIDATE }).catch(() => null);
   const image = await renderShareImage({
     photoUrl: data?.bannerImages[0],
     logoUrl: data?.company.brand.logo,

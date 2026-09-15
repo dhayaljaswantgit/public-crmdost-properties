@@ -5,11 +5,13 @@ import { renderShareImage } from '../../../lib/share-image';
 export const size = SHARE_IMAGE;
 export const contentType = 'image/jpeg';
 export const alt = 'Property listing on CRM Dost Properties';
-export const revalidate = SEO_REVALIDATE;
+// Segment config must be a literal (Next rejects an imported identifier here); equals SEO_REVALIDATE.
+export const revalidate = 300;
 
 /** The property's first photo, cropped, with the company logo. */
-export default async function Image({ params }: { params: { propertySlug: string } }) {
-  const property = await fetchPublicProperty(params.propertySlug, { revalidate: SEO_REVALIDATE }).catch(() => null);
+export default async function Image({ params }: { params: Promise<{ propertySlug: string }> }) {
+  const { propertySlug } = await params;
+  const property = await fetchPublicProperty(propertySlug, { revalidate: SEO_REVALIDATE }).catch(() => null);
   const image = await renderShareImage({
     photoUrl: property?.images[0],
     logoUrl: property?.brand?.logo,

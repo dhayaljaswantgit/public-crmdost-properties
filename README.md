@@ -2,6 +2,8 @@
 
 A Next.js public-facing property site that connects to the CRM Dost REST API and exposes a polished browsing experience for listings, companies, and property details.
 
+Stack: Next.js 15.5 (App Router) with React 19 and `sharp` 0.35. Requires Node 20.9 or newer (`sharp` 0.35's floor; Next 15 alone needs 18.18); the Docker image uses Node 20. Route `params` are Promises (Next 15) — every page and `opengraph-image` awaits them before use.
+
 ## What this app does
 
 The site is wired to the public API endpoints and supports:
@@ -35,7 +37,7 @@ Company slugs sit at the site root, so they must never equal a top-level route o
 - Property: `{property} | {company} | CRM Dost Properties`; description is the first ~155 characters of the listing's own description.
 - Share image (`opengraph-image.tsx` in each segment): the company's first banner image, or the property's first photo, cropped to 1200×630 on the fly with `sharp`, with the company logo on a white card. JPEG (~30–120 KB) because chat apps drop heavy previews. Falls back to the default banner.
 
-Metadata and share images re-fetch from the API at most every 5 minutes (`SEO_REVALIDATE`).
+Metadata and share images re-fetch from the API at most every 5 minutes (`SEO_REVALIDATE`). The `opengraph-image` segments export `revalidate = 300` as a literal (Next rejects an imported identifier in segment config) — keep it equal to `SEO_REVALIDATE`. `next.config.js` keeps the Next 14 client-router cache for dynamic pages (`experimental.staleTimes.dynamic: 30`; Next 15 lowered the default to 0) and pins `outputFileTracingRoot` to this directory since the repo sits inside a super-project with its own lockfile.
 
 ## API configuration
 

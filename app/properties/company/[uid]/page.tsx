@@ -1,11 +1,12 @@
 import { redirect } from 'next/navigation';
 
 type Props = {
-  params: {
+  params: Promise<{
     uid: string;
-  };
+  }>;
 };
 
-export default function LegacyCompanyAliasPage({ params }: Props) {
-  redirect(`/company/${params.uid}`);
+export default async function LegacyCompanyAliasPage({ params }: Props) {
+  const { uid } = await params;
+  redirect(`/company/${uid}`);
 }

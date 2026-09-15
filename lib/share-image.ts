@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import sharp from 'sharp';
+import sharp, { type OverlayOptions } from 'sharp';
 import { SHARE_IMAGE } from './seo';
 
 /**
@@ -62,7 +62,7 @@ export async function renderShareImage({ photoUrl, logoUrl }: { photoUrl?: strin
   const photo = (photoUrl && (await fetchImage(photoUrl))) || (await readFile(FALLBACK_BANNER));
   const { width, height } = SHARE_IMAGE;
 
-  const layers: sharp.OverlayOptions[] = [
+  const layers: OverlayOptions[] = [
     // Soft shade at the bottom so the logo card reads on any photo.
     {
       input: Buffer.from(
