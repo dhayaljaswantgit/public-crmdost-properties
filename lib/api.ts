@@ -1,17 +1,21 @@
 import { normalizeFurnished, normalizeStatus, toWholeNumber, type Furnished, type PropertyStatus } from './property-fields';
 
-const PROD_API_FALLBACK = 'https://test.apis.crmdost.com';
-const DEV_API_FALLBACK = 'http://localhost:3004';
+/*
+  The CRM API this site reads listings from comes only from NEXT_PUBLIC_API_URL,
+  which Next inlines at build time. There is no fallback: a missing or malformed
+  value fails loudly instead of guessing. It used to fall back to the staging
+  API, so a production or preprod build that forgot the variable silently showed
+  staging's listings and sent enquiries there.
+*/
+function resolveApiBase(): string {
+  const configured = String(process.env.NEXT_PUBLIC_API_URL || '').trim();
+  if (/^https?:\/\//i.test(configured)) return configured.replace(/\/+$/, '');
+  throw new Error(
+    `NEXT_PUBLIC_API_URL must be set to the CRM API's address, e.g. http://localhost:3004 or https://api.crmdost.com (got "${configured}").`,
+  );
+}
 
-const rawApiBase =
-  process.env.NEXT_PUBLIC_API_URL ||
-  (process.env.NODE_ENV === 'production' ? PROD_API_FALLBACK : DEV_API_FALLBACK);
-
-const apiBaseHasProtocol = /^https?:\/\//i.test(String(rawApiBase));
-
-export const API_BASE = apiBaseHasProtocol
-  ? String(rawApiBase).replace(/\/+$/, '')
-  : (process.env.NODE_ENV === 'production' ? PROD_API_FALLBACK : DEV_API_FALLBACK);
+export const API_BASE = resolveApiBase();
 
 export const API_V1_BASE = `${API_BASE}/v1`;
 

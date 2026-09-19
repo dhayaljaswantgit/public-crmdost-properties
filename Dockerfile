@@ -3,7 +3,9 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-ARG NEXT_PUBLIC_API_URL=http://localhost:3004
+# No default: lib/api.ts fails the build when this is missing, rather than
+# guessing an address (it once fell back to the staging API).
+ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_SITE_URL_PROPERTIES=https://properties.crmdost.com
 
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
