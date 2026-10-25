@@ -6,3 +6,6 @@ out
 *.log
 .firebase
 firebase-debug.log
+
+# TypeScript incremental build cache
+*.tsbuildinfo
